@@ -166,7 +166,7 @@ std::vector<std::pair<std::string, std::string>> listMicrophones() {
   return out;
 }
 
-std::vector<uint32_t> audioSessionPids() {
+std::vector<uint32_t> audioSessionPids(bool activeOnly) {
   std::vector<uint32_t> out;
   auto en = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
   com_ptr<IMMDeviceCollection> col;
@@ -190,6 +190,7 @@ std::vector<uint32_t> audioSessionPids() {
       if (!ctl2 || ctl2->IsSystemSoundsSession() == S_OK) continue;
       AudioSessionState state;
       if (FAILED(ctl2->GetState(&state)) || state == AudioSessionStateExpired) continue;
+      if (activeOnly && state != AudioSessionStateActive) continue;
       DWORD pid = 0;
       if (SUCCEEDED(ctl2->GetProcessId(&pid)) && pid != 0) out.push_back(pid);
     }

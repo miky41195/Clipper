@@ -5,7 +5,8 @@
 
 namespace clipper {
 namespace {
-constexpr Ticks kGoneAfter = 5 * kTicksPerSecond;
+// An app keeps its track until it has been silent (no active session) this long; avoids track churn on pauses.
+constexpr Ticks kGoneAfter = 30 * kTicksPerSecond;
 }
 
 AudioCapture::AudioCapture(AudioHub& hub, AudioCaptureConfig cfg, WarnSink onWarning)

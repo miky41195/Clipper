@@ -41,7 +41,8 @@ public:
 };
 
 std::vector<std::pair<std::string, std::string>> listMicrophones();  // {id, friendly name}
-std::vector<uint32_t> audioSessionPids();                           // all active render endpoints
+// PIDs owning audio sessions on any active render endpoint; activeOnly = currently playing.
+std::vector<uint32_t> audioSessionPids(bool activeOnly = true);
 std::vector<ProcEntry> snapshotProcesses();
 std::string appDisplayName(uint32_t pid, const std::string& exe);
 
