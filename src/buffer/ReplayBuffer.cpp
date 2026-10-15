@@ -12,9 +12,20 @@ void ReplayBuffer::Snapshot::forEach(const std::function<void(const Packet&)>& f
 }
 
 ReplayBuffer::ReplayBuffer(BufferConfig cfg, std::function<void(const std::string&)> onWarning)
-    : cfg_(std::move(cfg)), onWarning_(std::move(onWarning)) {}
+    : cfg_(std::move(cfg)), onWarning_(std::move(onWarning)) {
+  spillEnabled_ = cfg_.spillToDisk;
+  if (cfg_.spillToDisk) writer_ = std::thread([this] { writerLoop(); });
+}
 
-ReplayBuffer::~ReplayBuffer() { clear(); }
+ReplayBuffer::~ReplayBuffer() {
+  {
+    std::lock_guard lk(wmu_);
+    stop_ = true;
+  }
+  wcv_.notify_all();
+  if (writer_.joinable()) writer_.join();
+  clear();
+}
 
 void ReplayBuffer::setTrack(const TrackInfo& info) {
   std::lock_guard lk(mu_);
@@ -40,7 +51,8 @@ void ReplayBuffer::push(Packet p) {
     if (segments_.empty()) {
       if (!videoKey) return;
       segments_.push_back(std::make_shared<Segment>(p.pts));
-    } else if (videoKey && p.pts - segments_.back()->start() >= cfg_.segmentLength) {
+    } else if (videoKey && p.pts - segments_.back()->start() >= cfg_.segmentLength - cfg_.segmentLength / 10) {
+      // 10% slack: GOP timestamps are rounded (e.g. 30 x 333333 ticks < 1 s) and must not double segment length.
       closed = segments_.back();
       segments_.push_back(std::make_shared<Segment>(p.pts));
     }
@@ -109,10 +121,52 @@ void ReplayBuffer::clear() {
   pruneEndedLocked();
 }
 
-void ReplayBuffer::waitIdle() {}
+void ReplayBuffer::waitIdle() {
+  std::unique_lock lk(wmu_);
+  wcv_.wait(lk, [&] { return spillQueue_.empty() && !writerBusy_; });
+}
 
-void ReplayBuffer::enqueueSpill(std::shared_ptr<Segment>) {}
+void ReplayBuffer::enqueueSpill(std::shared_ptr<Segment> seg) {
+  {
+    std::lock_guard lk(wmu_);
+    spillQueue_.push_back(std::move(seg));
+  }
+  wcv_.notify_all();
+}
 
-void ReplayBuffer::writerLoop() {}
+void ReplayBuffer::writerLoop() {
+  while (true) {
+    std::shared_ptr<Segment> seg;
+    {
+      std::unique_lock lk(wmu_);
+      wcv_.wait(lk, [&] { return stop_ || !spillQueue_.empty(); });
+      if (spillQueue_.empty()) return;  // stop requested and nothing left
+      seg = std::move(spillQueue_.front());
+      spillQueue_.pop_front();
+      writerBusy_ = true;
+    }
+    // use_count()==1 means the segment was already evicted: nothing to save.
+    if (seg.use_count() > 1 && spillEnabled_) {
+      std::error_code ec;
+      std::filesystem::create_directories(cfg_.dir, ec);
+      const auto file = cfg_.dir / std::format("seg_{:08}.bin", fileCounter_++);
+      if (!seg->spill(file)) {
+        spillEnabled_ = false;
+        {
+          std::lock_guard lk(mu_);
+          cfg_.duration = std::min(cfg_.duration, cfg_.fallbackDuration);
+          evictLocked();
+        }
+        if (onWarning_) onWarning_("Scrittura del buffer su disco fallita: uso solo la RAM con durata ridotta");
+      }
+    }
+    seg.reset();
+    {
+      std::lock_guard lk(wmu_);
+      writerBusy_ = false;
+    }
+    wcv_.notify_all();
+  }
+}
 
 }  // namespace clipper
