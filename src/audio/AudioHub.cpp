@@ -72,11 +72,20 @@ int AudioHub::trackForNewApp(const std::string& name) {
 void AudioHub::pin() {
   std::lock_guard lk(mu_);
   pinned_ = true;
+  if (othersId_ < 0) othersId_ = addTrackLocked("Altre app");
 }
 
 void AudioHub::unpin() {
   std::lock_guard lk(mu_);
   pinned_ = false;
+  if (othersId_ >= 0) {
+    const auto it = tracks_.find(othersId_);
+    if (it != tracks_.end() && it->second.sources.empty()) {
+      tracks_.erase(it);
+      if (onEnd_) onEnd_(othersId_);
+      othersId_ = -1;
+    }
+  }
 }
 
 bool AudioHub::pinned() const {

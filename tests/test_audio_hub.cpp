@@ -129,7 +129,10 @@ TEST_CASE("while pinned new apps share one 'Altre app' track") {
   auto hub = r.make(false);
   const int before = hub.trackForNewApp("Discord");
   hub.pin();
+  CHECK(r.added.back().name == "Altre app");  // created eagerly so a recorder started now includes it
+  const size_t addedAtPin = r.added.size();
   const int x = hub.trackForNewApp("Spotify");
+  CHECK(r.added.size() == addedAtPin);
   const int y = hub.trackForNewApp("Chrome");
   CHECK(x == y);
   CHECK(x != before);
@@ -138,6 +141,16 @@ TEST_CASE("while pinned new apps share one 'Altre app' track") {
   const int z = hub.trackForNewApp("Edge");
   CHECK(z != x);
   CHECK(r.added.back().name == "Edge");
+}
+
+TEST_CASE("unpin removes an unused 'Altre app' track") {
+  Recorder r;
+  auto hub = r.make(false);
+  hub.pin();
+  const int others = hub.othersTrackId();
+  hub.unpin();
+  CHECK(r.ended == std::vector<int>{others});
+  CHECK(hub.othersTrackId() == -1);
 }
 
 TEST_CASE("tick before start does nothing; pts stays exact over many chunks") {
