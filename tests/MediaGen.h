@@ -2,6 +2,7 @@
 #include "encode/VideoEncoder.h"
 #include <algorithm>
 #include <functional>
+#include <mutex>
 #include <vector>
 
 // Solid NV12 frame: Y = luma, UV = 128.
