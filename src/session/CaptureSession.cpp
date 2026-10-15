@@ -36,19 +36,26 @@ CaptureSession::CaptureSession(const Settings& s, WarnSink onWarning)
     }
     CoUninitialize();
   });
-  audio_ = std::make_unique<AudioCapture>(hub_, AudioCaptureConfig{s.audioBlacklist, s.micDeviceId, s.captureMic},
-                                          onWarning_);
-  const auto monitors = listMonitors();
-  const MonitorInfo* mon = pickMonitor(monitors, s.monitorIndex);
-  if (!mon) throw std::runtime_error("nessun monitor trovato");
-  if (mon->index != s.monitorIndex && onWarning_) onWarning_("Monitor configurato non trovato: uso il principale");
-  video_ = std::make_unique<VideoPipeline>(
-      createGpuDevice(),
-      VideoPipelineConfig{mon->handle, s.outputHeight, s.fps, s.codec, s.quality, s.customKbps, s.captureCursor},
-      [this](Packet p) { onPacket(std::move(p)); }, [this](const TrackInfo& t) { onTrack(t); }, onWarning_);
+  try {
+    audio_ = std::make_unique<AudioCapture>(hub_, AudioCaptureConfig{s.audioBlacklist, s.micDeviceId, s.captureMic},
+                                            onWarning_);
+    const auto monitors = listMonitors();
+    const MonitorInfo* mon = pickMonitor(monitors, s.monitorIndex);
+    if (!mon) throw std::runtime_error("nessun monitor trovato");
+    if (mon->index != s.monitorIndex && onWarning_) onWarning_("Monitor configurato non trovato: uso il principale");
+    video_ = std::make_unique<VideoPipeline>(
+        createGpuDevice(),
+        VideoPipelineConfig{mon->handle, s.outputHeight, s.fps, s.codec, s.quality, s.customKbps, s.captureCursor},
+        [this](Packet p) { onPacket(std::move(p)); }, [this](const TrackInfo& t) { onTrack(t); }, onWarning_);
+  } catch (...) {
+    shutdown();  // the destructor does not run for a half-built object; a joinable thread would terminate
+    throw;
+  }
 }
 
-CaptureSession::~CaptureSession() {
+CaptureSession::~CaptureSession() { shutdown(); }
+
+void CaptureSession::shutdown() {
   video_.reset();
   audio_.reset();
   stopTick_ = true;

@@ -9,7 +9,7 @@ namespace clipper {
 
 struct HotkeySettings {
   std::string saveClip = "Alt+F10";
-  std::string toggleRecord = "Alt+F9";
+  std::string toggleRecord = "Alt+Shift+F9";  // Alt+F9 is taken by NVIDIA's overlay
   std::string openGallery = "Alt+G";
 };
 

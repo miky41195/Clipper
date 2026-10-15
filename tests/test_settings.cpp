@@ -17,7 +17,7 @@ TEST_CASE("defaults match the spec") {
   CHECK(s.replaySeconds == 60);
   CHECK(s.ramThresholdSeconds == 120);
   CHECK(s.hotkeys.saveClip == "Alt+F10");
-  CHECK(s.hotkeys.toggleRecord == "Alt+F9");
+  CHECK(s.hotkeys.toggleRecord == "Alt+Shift+F9");
   CHECK(s.hotkeys.openGallery == "Alt+G");
   CHECK(s.container == "mp4");
   CHECK(s.mixTrack);

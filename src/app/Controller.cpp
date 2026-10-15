@@ -44,6 +44,8 @@ Controller::Controller(HINSTANCE inst) : inst_(inst) {
   tray_ = std::make_unique<TrayIcon>(hwnd_);
   hotkeys_ = std::make_unique<HotkeyManager>(hwnd_);
   applyHotkeys();
+  // Only at process start: later it could delete a clip the save worker is still writing.
+  cleanupOnStartup(bufferDir(settings_), outputDir(settings_));
   startSession();
   if (session_)
     notify(L"Clipper attivo",
@@ -183,7 +185,6 @@ void Controller::applyHotkeys() {
 
 void Controller::startSession() {
   try {
-    cleanupOnStartup(bufferDir(settings_), outputDir(settings_));
     session_ = std::make_unique<CaptureSession>(settings_, [this](const std::string& m) { warnAsync(m); });
     paused_ = false;
     logInfo("cattura avviata: {} fps, codec {}, buffer {} s", settings_.fps, int(settings_.codec), settings_.replaySeconds);
@@ -235,6 +236,7 @@ void Controller::saveClip() {
 void Controller::toggleRecord() {
   if (recorder_) {
     std::shared_ptr<Recorder> rec(std::move(recorder_));
+    rec->detach();  // on the UI thread: the session (and its bus) may be gone when the worker finalizes
     if (session_) session_->hub().unpin();
     updateTray();
     notify(L"Registrazione fermata", L"Salvataggio in corso…", ToastKind::Recording);

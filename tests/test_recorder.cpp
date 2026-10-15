@@ -66,6 +66,17 @@ TEST_SUITE("gpu") {
     CHECK(ffprobe(rec.stop())["streams"].size() == 2);
   }
 
+  TEST_CASE("detached recorder finishes after its bus is gone") {
+    const auto dir = freshTempDir("rec_detach");
+    const auto m = makeMedia();
+    auto bus = std::make_unique<PacketBus>();
+    Recorder rec(*bus, m.tracks, dir / "rec.mp4", "mp4", [] {});
+    for (const auto& p : m.packets) bus->publish(p);
+    rec.detach();
+    bus.reset();
+    CHECK(fs::exists(rec.stop()));
+  }
+
   TEST_CASE("destructor finalizes the recording") {
     const auto dir = freshTempDir("rec_dtor");
     const auto m = makeMedia();

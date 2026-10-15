@@ -22,11 +22,11 @@ uint64_t processCpuTicks() {
   return fileTimeTicks(k) + fileTimeTicks(u);
 }
 
-size_t privateBytes() {
+PROCESS_MEMORY_COUNTERS_EX memory() {
   PROCESS_MEMORY_COUNTERS_EX pmc{};
   pmc.cb = sizeof(pmc);
   GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc));
-  return pmc.PrivateUsage;
+  return pmc;
 }
 
 }  // namespace
@@ -43,7 +43,7 @@ int runBench(int secs) {
   const double cores = si.dwNumberOfProcessors;
 
   double cpuSum = 0, cpuMax = 0;
-  size_t ramMax = 0, ramNoBufferMax = 0;
+  size_t ramMax = 0, ramNoBufferMax = 0, wsNoBufferMax = 0;
   int samples = 0;
   std::string clipInfo;
   {
@@ -60,9 +60,12 @@ int runBench(int secs) {
       lastWall = wall;
       cpuSum += pct;
       cpuMax = std::max(cpuMax, pct);
-      const size_t ram = privateBytes();
+      const auto m = memory();
+      const size_t ram = m.PrivateUsage;
+      const size_t buffer = session.bufferRamBytes();
       ramMax = std::max(ramMax, ram);
-      ramNoBufferMax = std::max(ramNoBufferMax, ram - std::min(ram, session.bufferRamBytes()));
+      ramNoBufferMax = std::max(ramNoBufferMax, ram - std::min(ram, buffer));
+      wsNoBufferMax = std::max(wsNoBufferMax, m.WorkingSetSize - std::min<size_t>(m.WorkingSetSize, buffer));
       ++samples;
     }
     const auto snap = session.snapshot(seconds(s.replaySeconds));
@@ -80,11 +83,11 @@ int runBench(int secs) {
   const std::string report = std::format(
       "Clipper bench ({} s, {} fps, codec {}, buffer {} s)\n"
       "CPU media {:.2f}%  max {:.2f}%  (obiettivo <= 2%)\n"
-      "RAM privata max {}  senza buffer {}  (obiettivo <= 40 MB)\n"
+      "RAM privata max {}  senza buffer {}  working set senza buffer {}\n"
       "{}\n"
       "avvisi: {}\n",
       samples, s.fps, int(s.codec), s.replaySeconds, samples ? cpuSum / samples : 0.0, cpuMax, formatBytes(ramMax),
-      formatBytes(ramNoBufferMax), clipInfo, warnings.empty() ? "nessuno" : warnings);
+      formatBytes(ramNoBufferMax), formatBytes(wsNoBufferMax), clipInfo, warnings.empty() ? "nessuno" : warnings);
   fputs(report.c_str(), stdout);
   fflush(stdout);
   std::ofstream(localDataDir() / L"bench.txt", std::ios::binary) << report;

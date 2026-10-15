@@ -30,6 +30,7 @@ public:
   size_t bufferRamBytes() const { return buffer_.ramBytes(); }
 
 private:
+  void shutdown();
   void onPacket(Packet p);
   void onTrack(const TrackInfo& t);
   void onTrackEnd(int id);

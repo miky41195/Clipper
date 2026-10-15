@@ -28,8 +28,14 @@ Recorder::~Recorder() {
   }
 }
 
-fs::path Recorder::stop() {
+void Recorder::detach() {
+  if (detached_) return;
   bus_.unsubscribe(subscription_);
+  detached_ = true;
+}
+
+fs::path Recorder::stop() {
+  detach();
   std::lock_guard lk(mu_);
   if (stopped_) return finalPath_;
   stopped_ = true;

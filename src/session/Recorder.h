@@ -18,7 +18,9 @@ public:
   Recorder(const Recorder&) = delete;
   Recorder& operator=(const Recorder&) = delete;
 
-  std::filesystem::path stop();  // idempotent; returns the final file
+  // Stops receiving packets; after this the bus may be destroyed. Call on the thread that owns the bus.
+  void detach();
+  std::filesystem::path stop();  // idempotent; detaches, finalizes and returns the final file
   Ticks duration() const;
 
 private:
@@ -29,6 +31,7 @@ private:
   mutable std::mutex mu_;
   std::unique_ptr<ClipWriter> writer_;
   int subscription_ = 0;
+  bool detached_ = false;
   bool stopped_ = false;
   Ticks first_ = -1;
   Ticks last_ = -1;
