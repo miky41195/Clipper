@@ -36,7 +36,7 @@ target_include_directories(clipper_core PUBLIC src)
 target_link_libraries(clipper_core PUBLIC
   nlohmann_json::nlohmann_json ffmpeg
   windowsapp d3d11 dxgi d2d1 dwrite mfplat mfuuid mf wmcodecdspuuid strmiids
-  mmdevapi winmm version shell32 ole32 oleaut32 user32 gdi32 propsys)
+  mmdevapi winmm version shell32 shcore ole32 oleaut32 user32 gdi32 propsys psapi)
 
 add_executable(clipper WIN32 src/app/main.cpp)
 target_link_libraries(clipper PRIVATE clipper_core)
