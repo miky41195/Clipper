@@ -20,12 +20,26 @@ FetchContent_Declare(json
 FetchContent_Declare(ffmpeg
   URL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-win64-lgpl-shared-8.1.zip
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
-FetchContent_MakeAvailable(doctest json ffmpeg)
+FetchContent_Declare(imgui
+  GIT_REPOSITORY https://github.com/ocornut/imgui.git
+  GIT_TAG v1.91.5
+  GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(doctest json ffmpeg imgui)
 
 add_library(ffmpeg INTERFACE)
 target_include_directories(ffmpeg INTERFACE ${ffmpeg_SOURCE_DIR}/include)
 target_link_directories(ffmpeg INTERFACE ${ffmpeg_SOURCE_DIR}/lib)
-target_link_libraries(ffmpeg INTERFACE avformat avcodec avutil)
+target_link_libraries(ffmpeg INTERFACE avformat avcodec avutil swscale swresample)
+
+add_library(imgui STATIC
+  ${imgui_SOURCE_DIR}/imgui.cpp ${imgui_SOURCE_DIR}/imgui_draw.cpp ${imgui_SOURCE_DIR}/imgui_tables.cpp
+  ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp)
+target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
+target_compile_definitions(imgui PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS)
+if(MSVC)
+  target_compile_options(imgui PRIVATE /W0)
+endif()
 file(GLOB FFMPEG_DLLS ${ffmpeg_SOURCE_DIR}/bin/*.dll)
 file(COPY ${FFMPEG_DLLS} DESTINATION ${CMAKE_BINARY_DIR}/bin)
 
@@ -34,8 +48,8 @@ list(FILTER CLIPPER_CORE_SRC EXCLUDE REGEX ".*/src/app/main\\.cpp$")
 add_library(clipper_core STATIC ${CLIPPER_CORE_SRC})
 target_include_directories(clipper_core PUBLIC src)
 target_link_libraries(clipper_core PUBLIC
-  nlohmann_json::nlohmann_json ffmpeg
-  windowsapp d3d11 dxgi d2d1 dwrite mfplat mfuuid mf wmcodecdspuuid strmiids
+  nlohmann_json::nlohmann_json ffmpeg imgui
+  windowsapp windowscodecs dwmapi d3dcompiler d3d11 dxgi d2d1 dwrite mfplat mfuuid mf wmcodecdspuuid strmiids
   mmdevapi winmm version shell32 shcore ole32 oleaut32 user32 gdi32 propsys psapi)
 
 add_executable(clipper WIN32 src/app/main.cpp)
