@@ -12,6 +12,8 @@
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <algorithm>
+#include <windows.h>
+#include <combaseapi.h>
 #include <ctime>
 #include <format>
 
@@ -39,24 +41,60 @@ GalleryPage::GalleryPage(UiContext& ctx) : ctx_(ctx) {}
 
 GalleryPage::~GalleryPage() {
   if (exportThread_.joinable()) exportThread_.join();
+  if (scanThread_.joinable()) scanThread_.join();
 }
 
-const std::vector<ClipInfo>& GalleryPage::clips() const {
-  static const std::vector<ClipInfo> none;
-  return library_ ? library_->clips() : none;
+std::vector<ClipInfo> GalleryPage::clips() const {
+  std::lock_guard lk(scanMu_);
+  return shown_;
+}
+
+bool GalleryPage::scanning() const {
+  std::lock_guard lk(scanMu_);
+  return scanning_;
+}
+
+fs::path GalleryPage::clipsDir() const {
+  return ctx_.clipsFolder ? ctx_.clipsFolder(ctx_.currentSettings ? ctx_.currentSettings() : Settings{}) : fs::path{};
 }
 
 void GalleryPage::ensureLibrary() {
-  const fs::path dir = ctx_.clipsFolder ? ctx_.clipsFolder(ctx_.currentSettings ? ctx_.currentSettings() : Settings{}) : fs::path{};
   const fs::path cache = ctx_.thumbnailCache ? ctx_.thumbnailCache() : fs::temp_directory_path() / "clipper_thumbs";
-  if (!library_) library_ = std::make_unique<ClipLibrary>(dir, cache / "library.json");
-  else if (library_->dir() != dir) library_->setDir(dir);
+  if (!library_) library_ = std::make_unique<ClipLibrary>(clipsDir(), cache / "library.json");
   if (!thumbQueue_) thumbQueue_ = std::make_unique<ThumbnailQueue>(cache);
 }
 
+// Scans on a worker thread (probing new files can take a while); requests during a scan coalesce into one rescan.
 void GalleryPage::refresh() {
   ensureLibrary();
-  library_->refresh();
+  {
+    std::lock_guard lk(scanMu_);
+    if (scanning_) {
+      rescanPending_ = true;
+      return;
+    }
+    scanning_ = true;
+  }
+  if (scanThread_.joinable()) scanThread_.join();
+  scanThread_ = std::thread([this, dir = clipsDir()] {
+    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    while (true) {
+      library_->setDir(dir);
+      std::vector<ClipInfo> result = library_->refresh();
+      std::lock_guard lk(scanMu_);
+      shown_ = std::move(result);
+      if (!rescanPending_) {
+        scanning_ = false;
+        break;
+      }
+      rescanPending_ = false;
+    }
+    CoUninitialize();
+  });
+}
+
+void GalleryPage::waitForScan() {
+  for (int i = 0; i < 500 && scanning(); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 void GalleryPage::onOpen() { refresh(); }
@@ -71,8 +109,9 @@ void GalleryPage::onClose() {
 
 void GalleryPage::prepareForSnapshot() {
   refresh();
+  waitForScan();
   const fs::path cache = ctx_.thumbnailCache ? ctx_.thumbnailCache() : fs::temp_directory_path() / "clipper_thumbs";
-  for (const auto& c : library_->clips()) {
+  for (const auto& c : clips()) {
     if (const auto t = makeThumbnail(c.path, cache)) {
       std::vector<uint8_t> px;
       int w = 0, h = 0;
@@ -92,7 +131,8 @@ void GalleryPage::prepareForSnapshot() {
 }
 
 bool GalleryPage::wantsAnimation() const {
-  return (player_ && player_->playing()) || exporting_ || scrubbing_ || (!requested_.empty() && thumbs_.size() < requested_.size());
+  return (player_ && player_->playing()) || exporting_ || scrubbing_ || scanning() ||
+         (!requested_.empty() && thumbs_.size() < requested_.size());
 }
 
 void GalleryPage::pollThumbnails() {
@@ -141,7 +181,7 @@ void GalleryPage::drawGrid(const UiFonts& f) {
   ImGui::BeginChild("##gallery", avail, ImGuiChildFlags_AlwaysUseWindowPadding);
   ImGui::PopStyleColor();
 
-  const auto& all = library_->clips();
+  const std::vector<ClipInfo> all = clips();
   int64_t total = 0;
   for (const auto& c : all) total += c.bytes;
   const float headerY = ImGui::GetCursorPosY();
@@ -160,7 +200,7 @@ void GalleryPage::drawGrid(const UiFonts& f) {
   ImGui::PopStyleVar();
   ImGui::GetWindowDrawList()->AddText(f.icon, f.icon->FontSize * 0.85f, {sp.x + px(11), sp.y + px(8)}, theme::kMuted, icon::kSearch);
   ImGui::SameLine(0, px(8));
-  if (ui::iconButton(f, "##folder", icon::kOpenFolder, tr("gal.folder")) && ctx_.openFolder) ctx_.openFolder(library_->dir());
+  if (ui::iconButton(f, "##folder", icon::kOpenFolder, tr("gal.folder")) && ctx_.openFolder) ctx_.openFolder(clipsDir());
   ImGui::SameLine(0, px(8));
   if (ui::iconButton(f, "##refresh", icon::kRefresh, tr("common.refresh"))) refresh();
   ImGui::SetCursorPosY(afterHeader);

@@ -1,4 +1,5 @@
 #include <doctest/doctest.h>
+#include <thread>
 #include "MediaGen.h"
 #include "TestUtil.h"
 #include "encode/AudioEncoder.h"
@@ -38,6 +39,25 @@ void makeClip(const fs::path& file, const char* app, uint8_t luma) {
 }  // namespace
 
 TEST_SUITE("gpu") {
+  TEST_CASE("gallery scans the folder in the background") {
+    const auto dir = freshTempDir("gallery_async");
+    makeClip(dir / "a.mp4", "A", 60);
+    makeClip(dir / "b.mp4", "B", 90);
+    UiContext ctx = previewContext();
+    ctx.clipsFolder = [dir](const Settings&) { return dir; };
+    ctx.thumbnailCache = [dir] { return dir / "thumbs"; };
+    GalleryPage page(ctx);
+    page.refresh();  // returns immediately
+    for (int i = 0; i < 250 && page.scanning(); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    CHECK_FALSE(page.scanning());
+    CHECK(page.clips().size() == 2);
+    makeClip(dir / "c.mp4", "C", 120);
+    page.refresh();
+    page.refresh();  // a second request while scanning is coalesced
+    for (int i = 0; i < 250 && page.scanning(); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    CHECK(page.clips().size() == 3);
+  }
+
   TEST_CASE("gallery and player pages render real clips") {
     const auto dir = freshTempDir("gallery_page");
     makeClip(dir / "Valorant_ace.mp4", "Valorant", 60);

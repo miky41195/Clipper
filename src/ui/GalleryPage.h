@@ -7,6 +7,7 @@
 #include "ui/UiContext.h"
 #include <atomic>
 #include <map>
+#include <mutex>
 #include <memory>
 #include <set>
 #include <string>
@@ -27,7 +28,8 @@ public:
   bool wantsAnimation() const;
   void openClip(const std::filesystem::path& clip);
   void prepareForSnapshot();  // synchronous thumbnails (offscreen previews)
-  const std::vector<ClipInfo>& clips() const;
+  std::vector<ClipInfo> clips() const;  // snapshot of the last scan
+  bool scanning() const;
 
 private:
   void drawGrid(const UiFonts& f);
@@ -40,10 +42,17 @@ private:
   void pollThumbnails();
   void closePlayer();
   void ensureLibrary();
+  void waitForScan();
+  std::filesystem::path clipsDir() const;
   void finishExport();
 
   UiContext& ctx_;
-  std::unique_ptr<ClipLibrary> library_;
+  std::unique_ptr<ClipLibrary> library_;  // used only by the scan thread
+  std::thread scanThread_;
+  mutable std::mutex scanMu_;
+  std::vector<ClipInfo> shown_;
+  bool scanning_ = false;
+  bool rescanPending_ = false;
   std::unique_ptr<ThumbnailQueue> thumbQueue_;
   std::map<std::wstring, Texture> thumbs_;
   std::set<std::wstring> requested_;
