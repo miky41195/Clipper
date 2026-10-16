@@ -19,7 +19,8 @@ void beginRow(const UiFonts& f, const char* label, const char* hint = nullptr);
 void endRow(bool separator = true);
 void alignRight(float itemWidth);  // inside a row: move the cursor so an item of this width ends at the column edge
 
-bool toggle(const char* id, bool* value);
+bool toggle(const char* id, bool* value);       // right-aligned in a settings row
+bool switchButton(const char* id, bool* value);  // at the cursor
 bool segmented(const char* id, const std::vector<std::string>& items, int* index, float width = 0);
 bool combo(const char* id, const std::vector<std::string>& items, int* index, float width = 0);
 bool stepSlider(const char* id, const std::vector<int>& steps, int* value, const std::string& label, float width = 0);
@@ -32,5 +33,10 @@ float drawKeycaps(const UiFonts& f, const std::string& combo, ImVec2 pos, float 
 bool colorSwatch(const char* id, ImU32 color, bool selected);
 void statusPill(const UiFonts& f, ImU32 dot, const std::string& text);
 void mutedText(const UiFonts& f, const std::string& text, bool wrap = true);
+// Continuous scrubber; returns true while the user drags (value updated).
+bool timeline(const char* id, double* value, double max, float width, bool* released = nullptr);
+bool smallSlider(const char* id, float* value, float min, float max, float width);
+void progressBar(float fraction, float width, float height);
+std::string clipTime(double seconds);  // "0:45", "12:03", "1:02:03"
 
 }  // namespace clipper::ui

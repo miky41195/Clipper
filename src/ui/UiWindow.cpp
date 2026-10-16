@@ -1,5 +1,6 @@
 #include "ui/UiWindow.h"
 #include "ui/ImageIO.h"
+#include "ui/Texture.h"
 #include "ui/Theme.h"
 #include <dwmapi.h>
 #include <imgui_impl_dx11.h>
@@ -127,6 +128,7 @@ void UiWindow::create() {
   io.ConfigInputTextCursorBlink = false;  // no idle redraws for a blinking caret
   ImGui_ImplWin32_Init(hwnd_);
   ImGui_ImplDX11_Init(device_.get(), context_.get());
+  setUiDevice(device_.get());
   fonts_ = loadFonts(scale_);
   theme::apply(accent_, scale_);
   closeRequested_ = false;
@@ -140,6 +142,7 @@ void UiWindow::createTarget() {
 }
 
 void UiWindow::destroy() {
+  if (hwnd_ && onClosing) onClosing();  // let pages drop textures and players first
   if (!hwnd_) return;
   if (ctx_) {
     ImGui::SetCurrentContext(ctx_);
@@ -152,6 +155,7 @@ void UiWindow::destroy() {
   swap_ = nullptr;
   context_ = nullptr;
   device_ = nullptr;
+  setUiDevice(nullptr);
   HWND h = hwnd_;
   hwnd_ = nullptr;
   SetWindowLongPtrW(h, GWLP_USERDATA, 0);
@@ -290,6 +294,8 @@ bool renderOffscreen(int w, int h, float scale, ImU32 accent, const DrawFn& draw
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
     ImGui_ImplDX11_Init(dev.get(), ctx.get());
+    ID3D11Device* prevDevice = uiDevice();
+    setUiDevice(dev.get());
     const UiFonts fonts = loadFonts(scale);
     theme::apply(accent, scale);
     for (int i = 0; i < 4; ++i) {  // a few frames so auto-sized layouts settle
@@ -312,6 +318,7 @@ bool renderOffscreen(int w, int h, float scale, ImU32 accent, const DrawFn& draw
     ctx->Unmap(staging.get(), 0);
     ImGui_ImplDX11_Shutdown();
     ImGui::DestroyContext(ic);
+    setUiDevice(prevDevice);
     ImGui::SetCurrentContext(prev);
     return ok;
   } catch (...) {

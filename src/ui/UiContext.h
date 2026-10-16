@@ -27,6 +27,7 @@ struct UiContext {
   std::function<std::filesystem::path(const Settings&)> bufferFolder;
   std::function<void(const std::filesystem::path&)> openFolder;
   std::function<std::optional<std::filesystem::path>(const std::filesystem::path& initial)> pickFolder;
+  std::function<std::filesystem::path()> thumbnailCache;
   std::function<bool()> autostart;
   std::function<void(bool)> setAutostart;
 };

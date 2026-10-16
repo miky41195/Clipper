@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <format>
 
 namespace clipper::ui {
 using theme::px;
@@ -120,10 +121,14 @@ void alignRight(float itemWidth) {
 }
 
 bool toggle(const char* id, bool* v) {
-  const float h = px(22), w = px(40);
-  alignRight(w);
+  alignRight(px(40));
   const float frameH = ImGui::GetFrameHeight();
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (frameH - h) * 0.5f);
+  ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (frameH - px(22)) * 0.5f);
+  return switchButton(id, v);
+}
+
+bool switchButton(const char* id, bool* v) {
+  const float h = px(22), w = px(40);
   const ImVec2 p = ImGui::GetCursorScreenPos();
   const bool clicked = ImGui::InvisibleButton(id, {w, h});
   if (clicked) *v = !*v;
@@ -361,6 +366,52 @@ void statusPill(const UiFonts& f, ImU32 dot, const std::string& text) {
   dl->AddText({p.x + px(22), p.y + (h - ts.y) * 0.5f}, theme::kMuted, text.c_str());
   ImGui::Dummy({w, h});
   ImGui::PopFont();
+}
+
+bool timeline(const char* id, double* value, double max, float width, bool* released) {
+  const float h = px(22);
+  const ImVec2 p = ImGui::GetCursorScreenPos();
+  ImGui::InvisibleButton(id, {width, h});
+  const bool active = ImGui::IsItemActive(), hovered = ImGui::IsItemHovered();
+  if (released) *released = ImGui::IsItemDeactivated();
+  if (active && max > 0) *value = std::clamp(double((ImGui::GetIO().MousePos.x - p.x) / width), 0.0, 1.0) * max;
+  const float t = max > 0 ? float(std::clamp(*value / max, 0.0, 1.0)) : 0.f;
+  const float cy = p.y + h * 0.5f, th = (hovered || active) ? px(6) : px(4);
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+  dl->AddRectFilled({p.x, cy - th * 0.5f}, {p.x + width, cy + th * 0.5f}, theme::kControlHover, th);
+  dl->AddRectFilled({p.x, cy - th * 0.5f}, {p.x + width * t, cy + th * 0.5f}, theme::accent(), th);
+  if (hovered || active) dl->AddCircleFilled({p.x + width * t, cy}, px(7), theme::kText, 20);
+  return active;
+}
+
+bool smallSlider(const char* id, float* v, float mn, float mx, float width) {
+  const float h = px(20);
+  const ImVec2 p = ImGui::GetCursorScreenPos();
+  ImGui::InvisibleButton(id, {width, h});
+  const bool active = ImGui::IsItemActive(), hovered = ImGui::IsItemHovered();
+  const float r = px(6);
+  if (active) *v = mn + std::clamp((ImGui::GetIO().MousePos.x - p.x - r) / (width - 2 * r), 0.f, 1.f) * (mx - mn);
+  const float t = (*v - mn) / (mx - mn);
+  const float x0 = p.x + r, x1 = p.x + width - r, cy = p.y + h * 0.5f, kx = x0 + (x1 - x0) * t;
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+  dl->AddRectFilled({x0, cy - px(2)}, {x1, cy + px(2)}, theme::kControlHover, px(2));
+  dl->AddRectFilled({x0, cy - px(2)}, {kx, cy + px(2)}, theme::accent(), px(2));
+  dl->AddCircleFilled({kx, cy}, r + (active || hovered ? px(1) : 0), theme::kText, 16);
+  return active;
+}
+
+void progressBar(float fraction, float width, float height) {
+  const ImVec2 p = ImGui::GetCursorScreenPos();
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+  dl->AddRectFilled(p, {p.x + width, p.y + height}, theme::kControlHover, height * 0.5f);
+  dl->AddRectFilled(p, {p.x + width * std::clamp(fraction, 0.f, 1.f), p.y + height}, theme::accent(), height * 0.5f);
+  ImGui::Dummy({width, height});
+}
+
+std::string clipTime(double s) {
+  const int t = int(std::max(0.0, s) + 0.5);
+  if (t >= 3600) return std::format("{}:{:02}:{:02}", t / 3600, (t / 60) % 60, t % 60);
+  return std::format("{}:{:02}", t / 60, t % 60);
 }
 
 void mutedText(const UiFonts& f, const std::string& text, bool wrap) {

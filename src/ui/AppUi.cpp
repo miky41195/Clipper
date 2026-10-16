@@ -8,10 +8,13 @@
 namespace clipper {
 using theme::px;
 
-AppUi::AppUi(UiContext& ctx) : ctx_(ctx), settings_(ctx) {}
+AppUi::AppUi(UiContext& ctx) : ctx_(ctx), settings_(ctx), gallery_(ctx) {}
 AppUi::~AppUi() = default;
 
-void AppUi::showGallery() { page_ = Page::Gallery; }
+void AppUi::showGallery() {
+  if (page_ != Page::Gallery) gallery_.refresh();
+  page_ = Page::Gallery;
+}
 
 void AppUi::showSettings(SettingsSection s) {
   page_ = Page::Settings;
@@ -20,8 +23,14 @@ void AppUi::showSettings(SettingsSection s) {
 
 void AppUi::onOpen() {
   settings_.onShow();
-  if (galleryOnOpen) galleryOnOpen();
+  gallery_.onOpen();
 }
+
+void AppUi::onClose() { gallery_.onClose(); }
+
+void AppUi::clipsChanged() { gallery_.refresh(); }
+
+bool AppUi::wantsAnimation() const { return page_ == Page::Gallery && gallery_.wantsAnimation(); }
 
 void AppUi::draw(const UiFonts& f) {
   drawSidebar(f);
@@ -29,8 +38,7 @@ void AppUi::draw(const UiFonts& f) {
   ImGui::PushStyleColor(ImGuiCol_ChildBg, theme::kBg);
   ImGui::BeginChild("##page", {0, 0}, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
   if (page_ == Page::Settings) settings_.draw(f, section_);
-  else if (galleryDrawer) galleryDrawer(f);
-  else drawGalleryPlaceholder(f);
+  else gallery_.draw(f);
   ImGui::EndChild();
   ImGui::PopStyleColor();
 }
@@ -95,26 +103,6 @@ void AppUi::drawSidebar(const UiFonts& f) {
   ImGui::EndChild();
   ImGui::PopStyleVar(2);
   ImGui::PopStyleColor();
-}
-
-void AppUi::drawGalleryPlaceholder(const UiFonts& f) {
-  const ImVec2 avail = ImGui::GetContentRegionAvail();
-  ImGui::PushFont(f.title);
-  const char* glyph = icon::kGallery;
-  const ImVec2 gs = ImGui::CalcTextSize(glyph);
-  ImGui::SetCursorPos({(avail.x - gs.x) * 0.5f, avail.y * 0.42f});
-  ImGui::PushStyleColor(ImGuiCol_Text, theme::kFaint);
-  ImGui::TextUnformatted(glyph);
-  ImGui::PopStyleColor();
-  ImGui::PopFont();
-  const std::string text = trf("gal.empty", ctx_.currentSettings ? ctx_.currentSettings().hotkeys.saveClip : "Alt+F10");
-  const float w = std::min(avail.x - px(80), px(420));
-  ImGui::SetCursorPosX((avail.x - w) * 0.5f);
-  ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + w);
-  ImGui::PushStyleColor(ImGuiCol_Text, theme::kMuted);
-  ImGui::TextWrapped("%s", text.c_str());
-  ImGui::PopStyleColor();
-  ImGui::PopTextWrapPos();
 }
 
 }  // namespace clipper

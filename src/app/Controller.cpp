@@ -135,8 +135,13 @@ void Controller::buildUi() {
     GetModuleFileNameW(nullptr, exe, MAX_PATH);
     setAutostart(on, exe);
   };
+  c.thumbnailCache = [] { return localDataDir() / L"thumbs"; };
   app_ = std::make_unique<AppUi>(uiCtx_);
-  ui_ = std::make_unique<UiWindow>(inst_, [this](const UiFonts& f) { app_->draw(f); });
+  ui_ = std::make_unique<UiWindow>(inst_, [this](const UiFonts& f) {
+    app_->draw(f);
+    ui_->setAnimating(app_->wantsAnimation());  // playback, export, thumbnails: keep drawing
+  });
+  ui_->onClosing = [this] { app_->onClose(); };
   ui_->setAccent(parseHexColor(settings_.accent).value_or(IM_COL32(61, 220, 132, 255)));
 }
 
@@ -334,6 +339,7 @@ void Controller::saveClip() {
       const Ticks length = snap.end - snap.start;
       logInfo("clip salvata: {} ({}, {}) in {} ms", pathToUtf8(path), durationText(length), formatBytes(size), (now() - t0) / 10'000);
       post([this, length, size, sounds = s.sounds] {
+        if (ui_ && ui_->open()) { app_->clipsChanged(); ui_->requestFrames(); }
         notify(L"Clip salvata", w(std::format("{} · {}", durationText(length), formatBytes(size))));
         if (sounds) playSaveSound();
       });
@@ -358,6 +364,7 @@ void Controller::toggleRecord() {
         const auto size = fs::file_size(path);
         logInfo("registrazione salvata: {} ({}, {})", pathToUtf8(path), durationText(length), formatBytes(size));
         post([this, length, size, sounds] {
+          if (ui_ && ui_->open()) { app_->clipsChanged(); ui_->requestFrames(); }
           notify(L"Registrazione salvata", w(std::format("{} · {}", durationText(length), formatBytes(size))));
           if (sounds) playSaveSound();
         });

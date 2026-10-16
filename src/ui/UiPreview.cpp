@@ -34,12 +34,14 @@ UiContext previewContext() {
   c.bufferFolder = [](const Settings&) { return std::filesystem::path(L"C:\\Users\\Player\\AppData\\Local\\Clipper\\buffer"); };
   c.openFolder = [](const std::filesystem::path&) {};
   c.pickFolder = [](const std::filesystem::path&) { return std::optional<std::filesystem::path>{}; };
+  c.thumbnailCache = [] { return std::filesystem::temp_directory_path() / "clipper_preview_thumbs"; };
   c.autostart = [] { return false; };
   c.setAutostart = [](bool) {};
   return c;
 }
 
-bool renderPreview(const std::string& pageSpec, const std::filesystem::path& png, float scale) {
+bool renderPreview(const std::string& pageSpec, const std::filesystem::path& png, float scale, UiContext* ctxOverride,
+                   const std::function<void(AppUi&)>& setup) {
   std::string page = pageSpec;
   ImVec2 mouse{-1, -1};
   if (const auto at = page.find('@'); at != std::string::npos) {
@@ -47,7 +49,8 @@ bool renderPreview(const std::string& pageSpec, const std::filesystem::path& png
     mouse = {std::stof(page.substr(at + 1, comma - at - 1)) * scale, std::stof(page.substr(comma + 1)) * scale};
     page.resize(at);
   }
-  UiContext ctx = previewContext();
+  UiContext fake = previewContext();
+  UiContext& ctx = ctxOverride ? *ctxOverride : fake;
   AppUi app(ctx);
   static const std::map<std::string, SettingsSection> sections{
       {"settings.capture", SettingsSection::Capture}, {"settings.replay", SettingsSection::Replay},
@@ -56,7 +59,16 @@ bool renderPreview(const std::string& pageSpec, const std::filesystem::path& png
   if (const auto it = sections.find(page); it != sections.end()) app.showSettings(it->second);
   else app.showGallery();
   const ImU32 accent = parseHexColor(Settings{}.accent).value_or(0xFF84DC3D);
-  return renderOffscreen(int(1120 * scale), int(740 * scale), scale, accent, [&](const UiFonts& f) { app.draw(f); }, png, mouse);
+  bool first = true;
+  const bool ok = renderOffscreen(int(1120 * scale), int(740 * scale), scale, accent,
+                                  [&](const UiFonts& f) {
+                                    if (first && setup) setup(app);  // inside: the UI device exists now
+                                    first = false;
+                                    app.draw(f);
+                                  },
+                                  png, mouse);
+  app.onClose();
+  return ok;
 }
 
 }  // namespace clipper

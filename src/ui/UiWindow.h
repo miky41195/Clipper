@@ -31,6 +31,7 @@ public:
   void setAccent(ImU32 accent);
   void renderFrame();
   HWND hwnd() const { return hwnd_; }
+  std::function<void()> onClosing;  // called before the device is released
 
 private:
   static LRESULT CALLBACK proc(HWND, UINT, WPARAM, LPARAM);
