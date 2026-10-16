@@ -73,7 +73,7 @@ void AppUi::drawSidebar(const UiFonts& f) {
   if (ui::navItem(f, icon::kGallery, tr("nav.gallery"), page_ == Page::Gallery)) showGallery();
   ImGui::Dummy({0, px(16)});
   ImGui::SetCursorPosX(ImGui::GetCursorPosX() + px(14));
-  ImGui::PushFont(f.small);
+  ImGui::PushFont(f.smallText);
   ImGui::PushStyleColor(ImGuiCol_Text, theme::kFaint);
   ImGui::TextUnformatted(tr("nav.header"));
   ImGui::PopStyleColor();

@@ -27,7 +27,7 @@ UiFonts loadFonts(float scale) {
   };
   UiFonts f;
   f.body = add(regular, 15);
-  f.small = add(regular, 13);
+  f.smallText = add(regular, 13);
   f.bold = add(semibold, 15);
   f.title = add(semibold, 22);
   ImFontConfig ic;

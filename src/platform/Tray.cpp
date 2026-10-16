@@ -101,9 +101,9 @@ UINT TrayIcon::showMenu(bool recording, bool paused, const HotkeySettings& hk) {
               label(recording ? L"Ferma registrazione" : L"Avvia registrazione", hk.toggleRecord).c_str());
   AppendMenuW(m, MF_STRING | (recording ? MF_GRAYED : 0), CmdPause, paused ? L"Riprendi cattura" : L"Metti in pausa");
   AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-  AppendMenuW(m, MF_STRING, CmdOpenFolder, label(L"Apri cartella clip", hk.openGallery).c_str());
-  AppendMenuW(m, MF_STRING, CmdSettings, L"Impostazioni…");
-  AppendMenuW(m, MF_STRING | (recording ? MF_GRAYED : 0), CmdReload, L"Ricarica impostazioni");
+  AppendMenuW(m, MF_STRING, CmdGallery, label(L"Galleria", hk.openGallery).c_str());
+  AppendMenuW(m, MF_STRING, CmdSettings, L"Impostazioni");
+  AppendMenuW(m, MF_STRING, CmdOpenFolder, L"Apri cartella clip");
   AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
   AppendMenuW(m, MF_STRING, CmdQuit, L"Esci");
   SetMenuDefaultItem(m, CmdSave, FALSE);

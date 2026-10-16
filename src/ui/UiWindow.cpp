@@ -105,7 +105,6 @@ void UiWindow::create() {
 
   createDevice(device_, context_);
   com_ptr<IDXGIFactory2> factory;
-  check_hresult(device_.as<IDXGIDevice>()->GetParent(IID_PPV_ARGS(factory.put())));
   com_ptr<IDXGIAdapter> adapter;
   device_.as<IDXGIDevice>()->GetAdapter(adapter.put());
   check_hresult(adapter->GetParent(IID_PPV_ARGS(factory.put())));
@@ -189,8 +188,31 @@ void UiWindow::renderFrame() {
   context_->OMSetRenderTargets(1, &rtv, nullptr);
   context_->ClearRenderTargetView(rtv, kClear);
   ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+  dumpIfRequested();
   swap_->Present(1, 0);
   if (settle_ > 0) --settle_;
+}
+
+// Debug aid: CLIPPER_UI_DUMP=<png> saves the window's own back buffer after a few frames.
+void UiWindow::dumpIfRequested() {
+  if (++frames_ != 3) return;
+  wchar_t path[MAX_PATH]{};
+  if (!GetEnvironmentVariableW(L"CLIPPER_UI_DUMP", path, MAX_PATH)) return;
+  com_ptr<ID3D11Texture2D> back;
+  if (FAILED(swap_->GetBuffer(0, IID_PPV_ARGS(back.put())))) return;
+  D3D11_TEXTURE2D_DESC td{};
+  back->GetDesc(&td);
+  td.Usage = D3D11_USAGE_STAGING;
+  td.BindFlags = 0;
+  td.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+  td.MiscFlags = 0;
+  com_ptr<ID3D11Texture2D> staging;
+  if (FAILED(device_->CreateTexture2D(&td, nullptr, staging.put()))) return;
+  context_->CopyResource(staging.get(), back.get());
+  D3D11_MAPPED_SUBRESOURCE m{};
+  if (FAILED(context_->Map(staging.get(), 0, D3D11_MAP_READ, 0, &m))) return;
+  writeImage(path, static_cast<const uint8_t*>(m.pData), int(td.Width), int(td.Height), int(m.RowPitch), ImageFormat::Png);
+  context_->Unmap(staging.get(), 0);
 }
 
 LRESULT CALLBACK UiWindow::proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {

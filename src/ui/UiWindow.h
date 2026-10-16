@@ -38,6 +38,8 @@ private:
   void create();
   void destroy();
   void createTarget();
+  void dumpIfRequested();
+  int frames_ = 0;
 
   HINSTANCE inst_;
   DrawFn draw_;

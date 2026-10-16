@@ -84,7 +84,7 @@ void beginRow(const UiFonts& f, const char* label, const char* hint) {
   ImGui::TextUnformatted(label);
   if (hint) {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - px(7));
-    ImGui::PushFont(f.small);
+    ImGui::PushFont(f.smallText);
     ImGui::PushStyleColor(ImGuiCol_Text, theme::kMuted);
     ImGui::TextWrapped("%s", hint);
     ImGui::PopStyleColor();
@@ -310,7 +310,7 @@ bool navItem(const UiFonts& f, const char* glyph, const char* label, bool select
 }
 
 float drawKeycaps(const UiFonts& f, const std::string& combo, ImVec2 p, float h) {
-  ImGui::PushFont(f.small);
+  ImGui::PushFont(f.smallText);
   ImDrawList* dl = ImGui::GetWindowDrawList();
   size_t pos = 0;
   float x = p.x;
@@ -351,7 +351,7 @@ bool colorSwatch(const char* id, ImU32 color, bool selected) {
 }
 
 void statusPill(const UiFonts& f, ImU32 dot, const std::string& text) {
-  ImGui::PushFont(f.small);
+  ImGui::PushFont(f.smallText);
   const ImVec2 ts = ImGui::CalcTextSize(text.c_str());
   const ImVec2 p = ImGui::GetCursorScreenPos();
   const float h = px(26), w = ts.x + px(30);
@@ -364,7 +364,7 @@ void statusPill(const UiFonts& f, ImU32 dot, const std::string& text) {
 }
 
 void mutedText(const UiFonts& f, const std::string& text, bool wrap) {
-  ImGui::PushFont(f.small);
+  ImGui::PushFont(f.smallText);
   ImGui::PushStyleColor(ImGuiCol_Text, theme::kMuted);
   if (wrap) ImGui::TextWrapped("%s", text.c_str());
   else ImGui::TextUnformatted(text.c_str());

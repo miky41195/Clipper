@@ -5,6 +5,10 @@
 #include "platform/Tray.h"
 #include "session/CaptureSession.h"
 #include "session/Recorder.h"
+#include "ui/AppUi.h"
+#include "ui/UiContext.h"
+#include "ui/UiWindow.h"
+#include <map>
 #include <condition_variable>
 #include <deque>
 #include <functional>
@@ -19,7 +23,7 @@ namespace clipper {
 // sequential save worker. All UI state is touched only on the thread that calls run().
 class Controller {
 public:
-  explicit Controller(HINSTANCE inst);
+  explicit Controller(HINSTANCE inst, bool showUi = false);
   ~Controller();
   Controller(const Controller&) = delete;
   Controller& operator=(const Controller&) = delete;
@@ -39,6 +43,9 @@ private:
   void openFolder();
   void applyHotkeys();
   void runMenu();
+  void openUi(bool gallery);
+  void buildUi();
+  std::string applyFromUi(const Settings& s);
   void notify(const std::wstring& title, const std::wstring& body, ToastKind kind = ToastKind::Info);
   void warnAsync(const std::string& msg);
   void updateTray();
@@ -57,6 +64,10 @@ private:
   std::unique_ptr<Toast> toast_;
   std::unique_ptr<CaptureSession> session_;
   std::unique_ptr<Recorder> recorder_;
+  UiContext uiCtx_;
+  std::unique_ptr<AppUi> app_;
+  std::unique_ptr<UiWindow> ui_;
+  std::map<std::string, uint32_t> audioPids_;  // exe -> a pid, for display names in the UI
 
   std::mutex jobMu_;
   std::condition_variable jobCv_;

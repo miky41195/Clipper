@@ -1,7 +1,14 @@
 #include "app/Controller.h"
 #include "app/ClipNaming.h"
+#include "app/SettingsDiff.h"
 #include "app/Startup.h"
+#include "audio/Wasapi.h"
 #include "core/Log.h"
+#include "platform/Autostart.h"
+#include "platform/FolderPicker.h"
+#include "ui/Color.h"
+#include "ui/I18n.h"
+#include "ui/SettingsModel.h"
 #include "core/Paths.h"
 #include "core/SizeEstimate.h"
 #include "core/Text.h"
@@ -26,10 +33,11 @@ std::string durationText(Ticks t) {
 }
 }  // namespace
 
-Controller::Controller(HINSTANCE inst) : inst_(inst) {
+Controller::Controller(HINSTANCE inst, bool showUi) : inst_(inst) {
   settingsPath_ = defaultSettingsPath();
   settings_ = loadSettings(settingsPath_);
   if (!fs::exists(settingsPath_)) saveSettings(settings_, settingsPath_);
+  setLanguage(settings_.language);
 
   WNDCLASSEXW wc{sizeof(wc)};
   wc.lpfnWndProc = wndProc;
@@ -47,6 +55,8 @@ Controller::Controller(HINSTANCE inst) : inst_(inst) {
   // Only at process start: later it could delete a clip the save worker is still writing.
   cleanupOnStartup(bufferDir(settings_), outputDir(settings_));
   startSession();
+  buildUi();
+  if (showUi) openUi(true);
   if (session_)
     notify(L"Clipper attivo",
            w(std::format("Ultimi {} pronti · {} per salvare", durationText(seconds(settings_.replaySeconds)),
@@ -54,6 +64,8 @@ Controller::Controller(HINSTANCE inst) : inst_(inst) {
 }
 
 Controller::~Controller() {
+  ui_.reset();
+  app_.reset();
   recorder_.reset();  // finalizes an ongoing recording
   session_.reset();
   {
@@ -70,11 +82,105 @@ Controller::~Controller() {
 
 int Controller::run() {
   MSG msg;
-  while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
-    TranslateMessage(&msg);
-    DispatchMessageW(&msg);
+  while (true) {
+    if (ui_ && ui_->needsFrames()) {
+      // UI open and something changed: drain input, then draw one frame (vsync paced).
+      while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
+        if (msg.message == WM_QUIT) return 0;
+        TranslateMessage(&msg);
+        DispatchMessageW(&msg);
+      }
+      ui_->renderFrame();
+    } else {
+      // Idle: block, no CPU used.
+      if (GetMessageW(&msg, nullptr, 0, 0) <= 0) return 0;
+      TranslateMessage(&msg);
+      DispatchMessageW(&msg);
+    }
   }
-  return 0;
+}
+
+void Controller::buildUi() {
+  UiContext& c = uiCtx_;
+  c.currentSettings = [this] { return settings_; };
+  c.applySettings = [this](const Settings& s) { return applyFromUi(s); };
+  c.monitors = [] { return listMonitors(); };
+  c.microphones = [] { return listMicrophones(); };
+  c.liveAudioApps = [this] {
+    auto groups = groupAudioApps(audioSessionPids(true), snapshotProcesses(), {}, GetCurrentProcessId());
+    for (const auto& g : groups) audioPids_[g.exe] = g.roots.front();
+    return groups;
+  };
+  c.appName = [this](const std::string& exe) {
+    const auto it = audioPids_.find(exe);
+    return appDisplayName(it == audioPids_.end() ? 0 : it->second, exe);
+  };
+  c.suspendHotkeys = [this](bool suspend) {
+    if (suspend) hotkeys_->apply(HotkeySettings{"", "", ""});
+    else hotkeys_->apply(settings_.hotkeys);
+  };
+  c.status = [this] {
+    if (recorder_) return std::pair{AppState::Recording, std::string(tr("status.recording"))};
+    if (paused_) return std::pair{AppState::Paused, std::string(tr("status.paused"))};
+    if (!session_) return std::pair{AppState::Off, std::string(tr("status.off"))};
+    return std::pair{AppState::Buffering, trf("status.buffering", durationLabel(settings_.replaySeconds))};
+  };
+  c.clipsFolder = [](const Settings& s) { return outputDir(s); };
+  c.bufferFolder = [](const Settings& s) { return bufferDir(s); };
+  c.openFolder = [](const fs::path& p) { ShellExecuteW(nullptr, L"open", p.c_str(), nullptr, nullptr, SW_SHOWNORMAL); };
+  c.pickFolder = [this](const fs::path& initial) { return pickFolder(ui_ ? ui_->hwnd() : hwnd_, initial); };
+  c.autostart = [] { return autostartEnabled(); };
+  c.setAutostart = [](bool on) {
+    wchar_t exe[MAX_PATH];
+    GetModuleFileNameW(nullptr, exe, MAX_PATH);
+    setAutostart(on, exe);
+  };
+  app_ = std::make_unique<AppUi>(uiCtx_);
+  ui_ = std::make_unique<UiWindow>(inst_, [this](const UiFonts& f) { app_->draw(f); });
+  ui_->setAccent(parseHexColor(settings_.accent).value_or(IM_COL32(61, 220, 132, 255)));
+}
+
+void Controller::openUi(bool gallery) {
+  if (gallery) app_->showGallery();
+  else app_->showSettings(SettingsSection::Capture);
+  const bool wasOpen = ui_->open();
+  try {
+    ui_->show();
+  } catch (const winrt::hresult_error& e) {
+    logError("apertura finestra fallita: {}", winrt::to_string(e.message()));
+    ui_->close();
+    notify(L"Finestra non disponibile", e.message().c_str(), ToastKind::Error);
+    return;
+  }
+  if (!wasOpen) app_->onOpen();
+}
+
+std::string Controller::applyFromUi(const Settings& s) {
+  const bool restart = captureChanged(settings_, s);
+  if (restart && recorder_) return "Ferma la registrazione prima di cambiare le impostazioni di cattura";
+  const auto errors = hotkeys_->apply(s.hotkeys);
+  if (!errors.empty()) {
+    hotkeys_->apply(settings_.hotkeys);  // keep the previous working shortcuts
+    std::string text;
+    for (const auto& [action, err] : errors) text += (text.empty() ? "" : " · ") + err;
+    return text;
+  }
+  const Settings old = settings_;
+  settings_ = s;
+  try {
+    saveSettings(settings_, settingsPath_);
+  } catch (const std::exception& e) {
+    logError("salvataggio impostazioni fallito: {}", e.what());
+  }
+  setLanguage(settings_.language);
+  if (const auto c = parseHexColor(settings_.accent)) ui_->setAccent(*c);
+  logInfo("impostazioni applicate (riavvio cattura: {})", restart);
+  if (restart && !paused_) {
+    session_.reset();
+    startSession();
+  }
+  updateTray();
+  return {};
 }
 
 LRESULT CALLBACK Controller::wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
@@ -97,13 +203,17 @@ LRESULT Controller::handle(UINT msg, WPARAM wp, LPARAM lp) {
     switch (HotkeyManager::fromId(wp).value_or(Action(0))) {
       case Action::SaveClip: saveClip(); break;
       case Action::ToggleRecord: toggleRecord(); break;
-      case Action::OpenGallery: openFolder(); break;
+      case Action::OpenGallery: openUi(true); break;
     }
     return 0;
   }
   if (msg == TrayIcon::kCallbackMsg) {
     const UINT ev = LOWORD(lp);
     if (ev == WM_CONTEXTMENU || ev == NIN_SELECT || ev == NIN_KEYSELECT) runMenu();
+    return 0;
+  }
+  if (msg == WM_APP + 3) {  // clipper.exe launched again: show the window
+    openUi(true);
     return 0;
   }
   if (msg == taskbarCreatedMsg_ && taskbarCreatedMsg_ != 0) {
@@ -118,9 +228,9 @@ void Controller::runMenu() {
     case CmdSave: saveClip(); break;
     case CmdRecord: toggleRecord(); break;
     case CmdPause: togglePause(); break;
-    case CmdOpenFolder:
-    case CmdGallery: openFolder(); break;
-    case CmdSettings: openSettings(); break;
+    case CmdOpenFolder: openFolder(); break;
+    case CmdGallery: openUi(true); break;
+    case CmdSettings: openUi(false); break;
     case CmdReload: reloadSettings(); break;
     case CmdQuit: PostQuitMessage(0); break;
     default: break;
@@ -166,6 +276,7 @@ void Controller::warnAsync(const std::string& msg) {
 }
 
 void Controller::updateTray() {
+  if (ui_) ui_->requestFrames();  // status pill in the open window
   if (!tray_) return;
   if (recorder_) tray_->setState(TrayState::Recording, L"Clipper · registrazione in corso");
   else if (paused_) tray_->setState(TrayState::Paused, L"Clipper · in pausa");
