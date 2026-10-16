@@ -66,6 +66,8 @@ private:
   std::unique_ptr<HotkeyManager> hotkeys_;
   std::unique_ptr<Toast> toast_;
   std::unique_ptr<CaptureSession> session_;
+  GpuDevice gpu_;  // one D3D11 device for capture and the window
+  GpuDevice sharedGpu();
   std::unique_ptr<Recorder> recorder_;
   UiContext uiCtx_;
   std::unique_ptr<AppUi> app_;

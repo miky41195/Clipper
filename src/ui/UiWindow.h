@@ -1,4 +1,5 @@
 #pragma once
+#include "gpu/GpuDevice.h"
 #include "ui/Fonts.h"
 #include <d3d11.h>
 #include <dxgi1_2.h>
@@ -32,6 +33,7 @@ public:
   void renderFrame();
   HWND hwnd() const { return hwnd_; }
   std::function<void()> onClosing;  // called before the device is released
+  std::function<GpuDevice()> deviceProvider;  // optional shared device (else the window creates its own)
 
 private:
   static LRESULT CALLBACK proc(HWND, UINT, WPARAM, LPARAM);

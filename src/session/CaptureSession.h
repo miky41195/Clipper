@@ -17,7 +17,7 @@ BufferConfig bufferConfigFor(const Settings& s, const std::filesystem::path& dir
 class CaptureSession {
 public:
   using WarnSink = std::function<void(const std::string&)>;
-  CaptureSession(const Settings& s, WarnSink onWarning);
+  CaptureSession(const Settings& s, WarnSink onWarning, GpuDevice gpu = {});  // empty gpu = create one
   ~CaptureSession();
   CaptureSession(const CaptureSession&) = delete;
   CaptureSession& operator=(const CaptureSession&) = delete;

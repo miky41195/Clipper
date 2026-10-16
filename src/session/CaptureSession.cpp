@@ -19,7 +19,7 @@ BufferConfig bufferConfigFor(const Settings& s, const std::filesystem::path& dir
   return c;
 }
 
-CaptureSession::CaptureSession(const Settings& s, WarnSink onWarning)
+CaptureSession::CaptureSession(const Settings& s, WarnSink onWarning, GpuDevice gpu)
     : onWarning_(std::move(onWarning)),
       buffer_(bufferConfigFor(s, bufferDir(s)), onWarning_),
       bank_(s.audioKbps, [this](Packet p) { onPacket(std::move(p)); }),
@@ -44,7 +44,7 @@ CaptureSession::CaptureSession(const Settings& s, WarnSink onWarning)
     if (!mon) throw std::runtime_error("nessun monitor trovato");
     if (mon->index != s.monitorIndex && onWarning_) onWarning_("Monitor configurato non trovato: uso il principale");
     video_ = std::make_unique<VideoPipeline>(
-        createGpuDevice(),
+        gpu.device ? gpu : createGpuDevice(),
         VideoPipelineConfig{mon->handle, s.outputHeight, s.fps, s.codec, s.quality, s.customKbps, s.captureCursor},
         [this](Packet p) { onPacket(std::move(p)); }, [this](const TrackInfo& t) { onTrack(t); }, onWarning_);
   } catch (...) {

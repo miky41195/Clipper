@@ -142,6 +142,7 @@ void Controller::buildUi() {
     ui_->setAnimating(app_->wantsAnimation());  // playback, export, thumbnails: keep drawing
   });
   ui_->onClosing = [this] { app_->onClose(); };
+  ui_->deviceProvider = [this] { return sharedGpu(); };
   ui_->setAccent(parseHexColor(settings_.accent).value_or(IM_COL32(61, 220, 132, 255)));
 }
 
@@ -306,7 +307,7 @@ void Controller::applyHotkeys() {
 
 void Controller::startSession() {
   try {
-    session_ = std::make_unique<CaptureSession>(settings_, [this](const std::string& m) { warnAsync(m); });
+    session_ = std::make_unique<CaptureSession>(settings_, [this](const std::string& m) { warnAsync(m); }, sharedGpu());
     paused_ = false;
     logInfo("cattura avviata: {} fps, codec {}, buffer {} s", settings_.fps, int(settings_.codec), settings_.replaySeconds);
   } catch (const std::exception& e) {
@@ -453,4 +454,18 @@ void Controller::openFolder() {
   ShellExecuteW(nullptr, L"open", outputDir(settings_).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
+GpuDevice Controller::sharedGpu() {
+  // Recreate after a driver reset (TDR); otherwise reuse so the window adds no second device.
+  if (!gpu_.device || gpu_.device->GetDeviceRemovedReason() != S_OK) {
+    try {
+      gpu_ = createGpuDevice();
+    } catch (const winrt::hresult_error& e) {
+      logError("creazione device GPU fallita: {}", winrt::to_string(e.message()));
+      gpu_ = {};
+    }
+  }
+  return gpu_;
+}
+
 }  // namespace clipper
+

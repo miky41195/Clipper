@@ -104,7 +104,13 @@ void UiWindow::create() {
   const COLORREF caption = RGB(15, 17, 21);
   DwmSetWindowAttribute(hwnd_, 35 /*DWMWA_CAPTION_COLOR*/, &caption, sizeof(caption));
 
-  createDevice(device_, context_);
+  if (deviceProvider) {
+    // Share the capture device: a second D3D11 device costs ~40 MB in the driver that is never given back.
+    const GpuDevice g = deviceProvider();
+    device_ = g.device;
+    context_ = g.context;
+  }
+  if (!device_) createDevice(device_, context_);
   com_ptr<IDXGIFactory2> factory;
   com_ptr<IDXGIAdapter> adapter;
   device_.as<IDXGIDevice>()->GetAdapter(adapter.put());
@@ -152,18 +158,14 @@ void UiWindow::destroy() {
     ctx_ = nullptr;
   }
   if (context_) {
-    // D3D11 defers destruction until the pipeline lets go of objects: unbind everything and flush,
-    // otherwise the driver keeps the swap chain / textures alive after the window is gone.
+    // D3D11 defers destruction until the pipeline lets go of objects: unbind our target and flush,
+    // otherwise the driver keeps the swap chain alive after the window is gone.
     context_->OMSetRenderTargets(0, nullptr, nullptr);
     context_->ClearState();
-    context_->Flush();
   }
   rtv_ = nullptr;
   swap_ = nullptr;
-  if (context_) {
-    context_->ClearState();
-    context_->Flush();
-  }
+  if (context_) context_->Flush();
   context_ = nullptr;
   device_ = nullptr;
   setUiDevice(nullptr);
