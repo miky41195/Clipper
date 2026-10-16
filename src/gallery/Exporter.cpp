@@ -208,6 +208,7 @@ fs::path exportClip(const fs::path& src, const ExportOptions& opt, const std::fu
       p.pts = av_rescale_q(pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts, st->time_base, kTicks);
       p.duration = av_rescale_q(pkt->duration, st->time_base, kTicks);
       p.keyframe = (pkt->flags & AV_PKT_FLAG_KEY) != 0;
+      if (pkt->dts != AV_NOPTS_VALUE) p.dts = av_rescale_q(pkt->dts, st->time_base, kTicks);  // keep B-frame order
       p.data = makeBytes(pkt->data, size_t(pkt->size));
       writer->write(p);
     } else {

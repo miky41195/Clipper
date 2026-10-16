@@ -32,12 +32,15 @@ inline Bytes makeBytes(const uint8_t* p, size_t n) {
   return std::make_shared<const std::vector<uint8_t>>(p, p + n);
 }
 
+constexpr Ticks kNoDts = INT64_MIN;
+
 struct Packet {
   int track = 0;
   Ticks pts = 0;
   Ticks duration = 0;
   bool keyframe = false;
   Bytes data;
+  Ticks dts = kNoDts;  // decode time when it differs from pts (B-frames); Clipper's own encoders never set it
 };
 
 }  // namespace clipper

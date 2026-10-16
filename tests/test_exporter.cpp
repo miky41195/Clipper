@@ -47,7 +47,52 @@ fs::path makeSource(const fs::path& dir) {
 }
 }  // namespace
 
+namespace {
+std::string run(const std::wstring& cmd) {
+  FILE* p = _wpopen((L"\"" + cmd + L"\"").c_str(), L"rb");
+  std::string out;
+  char buf[4096];
+  size_t n;
+  while (p && (n = fread(buf, 1, sizeof buf, p)) > 0) out.append(buf, n);
+  if (p) _pclose(p);
+  return out;
+}
+
+std::vector<double> videoPacketTimes(const fs::path& file) {
+  const std::string csv = run(L"\"" + fs::path(CLIPPER_FFPROBE).wstring() +
+                              L"\" -v error -select_streams v -show_entries packet=pts_time -of csv=p=0 \"" + file.wstring() + L"\"");
+  std::vector<double> t;
+  size_t pos = 0;
+  while (pos < csv.size()) {
+    const size_t nl = csv.find('\n', pos);
+    const std::string line = csv.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos);
+    if (!line.empty() && line != "\r") t.push_back(std::stod(line));
+    if (nl == std::string::npos) break;
+    pos = nl + 1;
+  }
+  std::sort(t.begin(), t.end());
+  return t;
+}
+}  // namespace
+
 TEST_SUITE("gpu") {
+  TEST_CASE("export of a clip with B-frames keeps every frame timestamp") {
+    const auto dir = freshTempDir("export_bframes");
+    const auto src = dir / "bframes.mp4";
+    const fs::path ffmpeg = fs::path(CLIPPER_FFPROBE).parent_path() / "ffmpeg.exe";
+    run(L"\"" + ffmpeg.wstring() +
+        L"\" -v error -y -f lavfi -i testsrc2=size=320x180:rate=30:duration=2 -f lavfi -i sine=frequency=440:duration=2 "
+        L"-c:v h264_nvenc -bf 2 -g 30 -c:a aac \"" + src.wstring() + L"\"");
+    REQUIRE(fs::exists(src));
+    const auto before = videoPacketTimes(src);
+    REQUIRE(before.size() >= 55);
+    const auto out = exportClip(src, {{true}, {1.f}, false}, {});
+    const auto after = videoPacketTimes(out);
+    REQUIRE(after.size() == before.size());
+    const double offset = after.front() - before.front();
+    for (size_t i = 0; i < before.size(); ++i) CHECK(after[i] - offset == doctest::Approx(before[i]).epsilon(0.001));
+  }
+
   TEST_CASE("export keeps only the chosen tracks, mixed") {
     const auto dir = freshTempDir("export");
     const auto src = makeSource(dir);

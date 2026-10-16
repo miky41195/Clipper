@@ -153,7 +153,8 @@ void ClipWriter::Impl::writePacket(const Packet& p) {
   }
   std::memcpy(pkt->data, p.data->data(), p.data->size());
   pkt->stream_index = si;
-  pkt->pts = pkt->dts = p.pts - origin;
+  pkt->pts = p.pts - origin;
+  pkt->dts = (p.dts == kNoDts ? p.pts : p.dts) - origin;
   pkt->duration = p.duration;
   if (p.keyframe) pkt->flags |= AV_PKT_FLAG_KEY;
   av_packet_rescale_ts(pkt, kTimeBase, st->time_base);
