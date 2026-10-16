@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include "Ffprobe.h"
 #include "MediaGen.h"
 #include "TestUtil.h"
@@ -75,6 +77,23 @@ TEST_SUITE("gpu") {
     rec.detach();
     bus.reset();
     CHECK(fs::exists(rec.stop()));
+  }
+
+  TEST_CASE("a slow disk does not block the publisher") {
+    const auto dir = freshTempDir("rec_slow");
+    const auto m = makeMedia();
+    PacketBus bus;
+    Recorder rec(bus, m.tracks, dir / "rec.mp4", "mp4", [] {});
+    rec.setWriteHookForTest([] { std::this_thread::sleep_for(std::chrono::milliseconds(5)); });
+    const auto t0 = std::chrono::steady_clock::now();
+    for (const auto& p : m.packets) bus.publish(p);  // ~260 packets: 1.3 s if written inline
+    const auto publishMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
+    MESSAGE("publish took " << publishMs << " ms for " << m.packets.size() << " packets");
+    CHECK(publishMs < 200);
+    const auto out = rec.stop();  // drains the queue
+    const auto j = ffprobe(out);
+    REQUIRE(j["streams"].size() == 2);
+    CHECK(probeDuration(j) == doctest::Approx(2.0).epsilon(0.1));
   }
 
   TEST_CASE("destructor finalizes the recording") {

@@ -10,14 +10,19 @@ Recorder::Recorder(PacketBus& bus, std::vector<TrackInfo> tracks, fs::path final
   workPath_.replace_extension(L".rec.mkv");
   writer_ = std::make_unique<ClipWriter>(workPath_, "mkv", std::move(tracks));
   if (!app.empty()) writer_->setApp(app);
+  thread_ = std::thread([this] { writerLoop(); });
+  // Runs on encoder threads: only queue the packet (payloads are shared, not copied).
   subscription_ = bus_.subscribe([this](const Packet& p) {
-    std::lock_guard lk(mu_);
-    if (stopped_) return;
-    writer_->write(p);
-    if (p.track == kVideoTrack) {
-      if (first_ < 0 && p.keyframe) first_ = p.pts;
-      if (first_ >= 0) last_ = p.pts + p.duration;
+    {
+      std::lock_guard lk(mu_);
+      if (draining_) return;
+      queue_.push_back(p);
+      if (p.track == kVideoTrack) {
+        if (first_ < 0 && p.keyframe) first_ = p.pts;
+        if (first_ >= 0) last_ = p.pts + p.duration;
+      }
     }
+    cv_.notify_one();
   });
   if (requestKeyframe) requestKeyframe();  // start without waiting up to a full GOP
 }
@@ -26,6 +31,34 @@ Recorder::~Recorder() {
   try {
     stop();
   } catch (...) {
+  }
+  if (thread_.joinable()) thread_.join();
+}
+
+void Recorder::setWriteHookForTest(std::function<void()> hook) {
+  std::lock_guard lk(mu_);
+  writeHook_ = std::move(hook);
+}
+
+void Recorder::writerLoop() {
+  while (true) {
+    Packet p;
+    std::function<void()> hook;
+    {
+      std::unique_lock lk(mu_);
+      cv_.wait(lk, [&] { return draining_ || !queue_.empty(); });
+      if (queue_.empty()) return;  // draining and everything written
+      p = std::move(queue_.front());
+      queue_.pop_front();
+      hook = writeHook_;
+    }
+    if (hook) hook();
+    try {
+      writer_->write(p);
+    } catch (...) {
+      std::lock_guard lk(mu_);
+      if (!writeError_) writeError_ = std::current_exception();
+    }
   }
 }
 
@@ -37,9 +70,15 @@ void Recorder::detach() {
 
 fs::path Recorder::stop() {
   detach();
-  std::lock_guard lk(mu_);
   if (stopped_) return finalPath_;
   stopped_ = true;
+  {
+    std::lock_guard lk(mu_);
+    draining_ = true;
+  }
+  cv_.notify_all();
+  if (thread_.joinable()) thread_.join();
+  if (writeError_) std::rethrow_exception(writeError_);
   writer_->finish();
   writer_.reset();
   if (container_ == "mkv") {
