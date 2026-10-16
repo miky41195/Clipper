@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include "core/Text.h"
@@ -6,6 +7,37 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+}
+
+// Peak absolute sample of the first audio stream (fltp), or -1 if there is none.
+inline double audioPeak(const std::filesystem::path& file) {
+  AVFormatContext* fmt = nullptr;
+  if (avformat_open_input(&fmt, clipper::pathToUtf8(file).c_str(), nullptr, nullptr) < 0) return -1;
+  avformat_find_stream_info(fmt, nullptr);
+  const AVCodec* codec = nullptr;
+  const int si = av_find_best_stream(fmt, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
+  double peak = -1;
+  if (si >= 0) {
+    peak = 0;
+    AVCodecContext* ctx = avcodec_alloc_context3(codec);
+    avcodec_parameters_to_context(ctx, fmt->streams[si]->codecpar);
+    avcodec_open2(ctx, codec, nullptr);
+    AVPacket* pkt = av_packet_alloc();
+    AVFrame* fr = av_frame_alloc();
+    while (av_read_frame(fmt, pkt) >= 0) {
+      if (pkt->stream_index == si && avcodec_send_packet(ctx, pkt) >= 0)
+        while (avcodec_receive_frame(ctx, fr) >= 0) {
+          const auto* s = reinterpret_cast<const float*>(fr->data[0]);
+          for (int i = 0; i < fr->nb_samples; ++i) peak = std::max(peak, double(std::fabs(s[i])));
+        }
+      av_packet_unref(pkt);
+    }
+    av_frame_free(&fr);
+    av_packet_free(&pkt);
+    avcodec_free_context(&ctx);
+  }
+  avformat_close_input(&fmt);
+  return peak;
 }
 
 // Time (s) of the first decoded frame/sample matching a predicate, or -1.
