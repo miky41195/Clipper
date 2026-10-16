@@ -1,4 +1,5 @@
 #include "platform/Tray.h"
+#include "core/I18n.h"
 #include "core/Text.h"
 #include <shellapi.h>
 #include <algorithm>
@@ -6,6 +7,7 @@
 
 namespace clipper {
 namespace {
+std::wstring T(const char* key) { return utf8ToWide(tr(key)); }
 
 // Anti-aliased colored dot with a soft dark ring, drawn at runtime (no icon assets).
 HICON makeDotIcon(COLORREF color, int size = 32) {
@@ -96,16 +98,16 @@ UINT TrayIcon::showMenu(bool recording, bool paused, const HotkeySettings& hk) {
     return key.empty() ? std::wstring(text) : std::wstring(text) + L"\t" + utf8ToWide(key);
   };
   HMENU m = CreatePopupMenu();
-  AppendMenuW(m, MF_STRING | (paused ? MF_GRAYED : 0), CmdSave, label(L"Salva clip", hk.saveClip).c_str());
+  AppendMenuW(m, MF_STRING | (paused ? MF_GRAYED : 0), CmdSave, label(T("tray.save").c_str(), hk.saveClip).c_str());
   AppendMenuW(m, MF_STRING | (paused ? MF_GRAYED : 0), CmdRecord,
-              label(recording ? L"Ferma registrazione" : L"Avvia registrazione", hk.toggleRecord).c_str());
-  AppendMenuW(m, MF_STRING | (recording ? MF_GRAYED : 0), CmdPause, paused ? L"Riprendi cattura" : L"Metti in pausa");
+              label((recording ? T("tray.rec.stop") : T("tray.rec.start")).c_str(), hk.toggleRecord).c_str());
+  AppendMenuW(m, MF_STRING | (recording ? MF_GRAYED : 0), CmdPause, (paused ? T("tray.resume") : T("tray.pause")).c_str());
   AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-  AppendMenuW(m, MF_STRING, CmdGallery, label(L"Galleria", hk.openGallery).c_str());
-  AppendMenuW(m, MF_STRING, CmdSettings, L"Impostazioni");
-  AppendMenuW(m, MF_STRING, CmdOpenFolder, L"Apri cartella clip");
+  AppendMenuW(m, MF_STRING, CmdGallery, label(T("nav.gallery").c_str(), hk.openGallery).c_str());
+  AppendMenuW(m, MF_STRING, CmdSettings, T("nav.settings").c_str());
+  AppendMenuW(m, MF_STRING, CmdOpenFolder, T("tray.folder").c_str());
   AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-  AppendMenuW(m, MF_STRING, CmdQuit, L"Esci");
+  AppendMenuW(m, MF_STRING, CmdQuit, T("tray.quit").c_str());
   SetMenuDefaultItem(m, CmdSave, FALSE);
   POINT pt;
   GetCursorPos(&pt);

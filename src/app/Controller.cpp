@@ -7,7 +7,7 @@
 #include "platform/Autostart.h"
 #include "platform/FolderPicker.h"
 #include "ui/Color.h"
-#include "ui/I18n.h"
+#include "core/I18n.h"
 #include "ui/SettingsModel.h"
 #include "core/Paths.h"
 #include "core/SizeEstimate.h"
@@ -24,6 +24,7 @@ constexpr UINT kRunMsg = WM_APP + 2;
 const wchar_t* kWindowClass = L"ClipperController";
 
 std::wstring w(const std::string& s) { return utf8ToWide(s); }
+std::wstring T(const char* key) { return utf8ToWide(tr(key)); }
 
 void playSaveSound() { PlaySoundW(L"SystemNotification", nullptr, SND_ALIAS | SND_ASYNC | SND_NODEFAULT); }
 
@@ -58,9 +59,8 @@ Controller::Controller(HINSTANCE inst, bool showUi) : inst_(inst) {
   buildUi();
   if (showUi) openUi(true);
   if (session_)
-    notify(L"Clipper attivo",
-           w(std::format("Ultimi {} pronti · {} per salvare", durationText(seconds(settings_.replaySeconds)),
-                         settings_.hotkeys.saveClip)));
+    notify(T("toast.started"),
+           w(trf("toast.started.body", durationLabel(settings_.replaySeconds), settings_.hotkeys.saveClip)));
 }
 
 Controller::~Controller() {
@@ -155,7 +155,7 @@ void Controller::openUi(bool gallery) {
   } catch (const winrt::hresult_error& e) {
     logError("apertura finestra fallita: {}", winrt::to_string(e.message()));
     ui_->close();
-    notify(L"Finestra non disponibile", e.message().c_str(), ToastKind::Error);
+    notify(T("toast.window"), e.message().c_str(), ToastKind::Error);
     return;
   }
   if (!wasOpen) app_->onOpen();
@@ -163,7 +163,7 @@ void Controller::openUi(bool gallery) {
 
 std::string Controller::applyFromUi(const Settings& s) {
   const bool restart = captureChanged(settings_, s);
-  if (restart && recorder_) return "Ferma la registrazione prima di cambiare le impostazioni di cattura";
+  if (restart && recorder_) return tr("apply.recording");
   const auto errors = hotkeys_->apply(s.hotkeys);
   if (!errors.empty()) {
     hotkeys_->apply(settings_.hotkeys);  // keep the previous working shortcuts
@@ -242,7 +242,6 @@ void Controller::runMenu() {
     case CmdOpenFolder: openFolder(); break;
     case CmdGallery: openUi(true); break;
     case CmdSettings: openUi(false); break;
-    case CmdReload: reloadSettings(); break;
     case CmdQuit: PostQuitMessage(0); break;
     default: break;
   }
@@ -289,10 +288,10 @@ void Controller::warnAsync(const std::string& msg) {
 void Controller::updateTray() {
   if (ui_) ui_->requestFrames();  // status pill in the open window
   if (!tray_) return;
-  if (recorder_) tray_->setState(TrayState::Recording, L"Clipper · registrazione in corso");
-  else if (paused_) tray_->setState(TrayState::Paused, L"Clipper · in pausa");
-  else if (!session_) tray_->setState(TrayState::Error, L"Clipper · cattura non attiva");
-  else tray_->setState(TrayState::Buffering, w(std::format("Clipper · ultimi {} in memoria", durationText(seconds(settings_.replaySeconds)))));
+  if (recorder_) tray_->setState(TrayState::Recording, T("tray.tip.recording"));
+  else if (paused_) tray_->setState(TrayState::Paused, T("tray.tip.paused"));
+  else if (!session_) tray_->setState(TrayState::Error, T("tray.tip.off"));
+  else tray_->setState(TrayState::Buffering, w(trf("tray.tip.buffering", durationLabel(settings_.replaySeconds))));
 }
 
 void Controller::applyHotkeys() {
@@ -302,7 +301,7 @@ void Controller::applyHotkeys() {
     logWarn("{}", err);
     text += (text.empty() ? "" : "\n") + err;
   }
-  if (!text.empty()) notify(L"Scorciatoie da controllare", w(text), ToastKind::Error);
+  if (!text.empty()) notify(T("toast.hotkeys"), w(text), ToastKind::Error);
 }
 
 void Controller::startSession() {
@@ -313,11 +312,11 @@ void Controller::startSession() {
   } catch (const std::exception& e) {
     session_.reset();
     logError("avvio cattura fallito: {}", e.what());
-    notify(L"Cattura non avviata", w(e.what()), ToastKind::Error);
+    notify(T("toast.capture.failed"), w(e.what()), ToastKind::Error);
   } catch (const winrt::hresult_error& e) {
     session_.reset();
     logError("avvio cattura fallito: {}", winrt::to_string(e.message()));
-    notify(L"Cattura non avviata", e.message().c_str(), ToastKind::Error);
+    notify(T("toast.capture.failed"), e.message().c_str(), ToastKind::Error);
   }
   updateTray();
 }
@@ -325,21 +324,21 @@ void Controller::startSession() {
 void Controller::saveClip(int attempt) {
   if (attempt == 0) logInfo("salvataggio clip richiesto");
   if (!session_) {
-    notify(L"Cattura in pausa", L"Riprendi la cattura dal menu per salvare clip", ToastKind::Error);
+    notify(T("toast.paused"), T("toast.paused.save"), ToastKind::Error);
     return;
   }
   auto snap = session_->snapshot(seconds(settings_.replaySeconds));
   const bool tooShort = snap.empty() || snap.end - snap.start < seconds(std::min(2, settings_.replaySeconds));
   if (tooShort && attempt < kSaveRetries) {
     // Capture just started: give the buffer a moment, then save what there is (a shorter clip).
-    if (attempt == 0) notify(L"Cattura in avvio", L"Salvo la clip appena il buffer è pronto");
+    if (attempt == 0) notify(T("toast.starting"), T("toast.starting.body"));
     saveAttempt_ = attempt + 1;
     SetTimer(hwnd_, kSaveRetryTimer, 250, nullptr);
     return;
   }
   if (snap.empty()) {
     logWarn("salvataggio clip: buffer vuoto dopo {} tentativi", attempt);
-    notify(L"Buffer vuoto", L"La cattura non sta producendo video: controlla il log", ToastKind::Error);
+    notify(T("toast.empty"), T("toast.empty.body"), ToastKind::Error);
     return;
   }
   const std::string app = foregroundAppName();
@@ -357,13 +356,12 @@ void Controller::saveClip(int attempt) {
       const bool partial = length < seconds(s.replaySeconds - 1);
       post([this, length, size, partial, sounds = s.sounds] {
         if (ui_ && ui_->open()) { app_->clipsChanged(); ui_->requestFrames(); }
-        notify(L"Clip salvata", w(std::format("{} · {}{}", durationText(length), formatBytes(size),
-                                              partial ? " (buffer in riempimento)" : "")));
+        notify(T("toast.saved"), w(std::format("{} · {}{}", durationText(length), formatBytes(size), partial ? tr("toast.partial") : "")));
         if (sounds) playSaveSound();
       });
     } catch (const std::exception& e) {
       logError("salvataggio clip fallito: {}", e.what());
-      post([this, msg = std::string(e.what())] { notify(L"Salvataggio fallito", w(msg), ToastKind::Error); });
+      post([this, msg = std::string(e.what())] { notify(T("toast.savefail"), w(msg), ToastKind::Error); });
     }
   });
 }
@@ -374,7 +372,7 @@ void Controller::toggleRecord() {
     rec->detach();  // on the UI thread: the session (and its bus) may be gone when the worker finalizes
     if (session_) session_->hub().unpin();
     updateTray();
-    notify(L"Registrazione fermata", L"Salvataggio in corso…", ToastKind::Recording);
+    notify(T("toast.rec.stopped"), T("toast.rec.saving"), ToastKind::Recording);
     enqueue([this, rec, sounds = settings_.sounds] {
       try {
         const Ticks length = rec->duration();
@@ -383,18 +381,18 @@ void Controller::toggleRecord() {
         logInfo("registrazione salvata: {} ({}, {})", pathToUtf8(path), durationText(length), formatBytes(size));
         post([this, length, size, sounds] {
           if (ui_ && ui_->open()) { app_->clipsChanged(); ui_->requestFrames(); }
-          notify(L"Registrazione salvata", w(std::format("{} · {}", durationText(length), formatBytes(size))));
+          notify(T("toast.rec.saved"), w(std::format("{} · {}", durationText(length), formatBytes(size))));
           if (sounds) playSaveSound();
         });
       } catch (const std::exception& e) {
         logError("registrazione fallita: {}", e.what());
-        post([this, msg = std::string(e.what())] { notify(L"Registrazione fallita", w(msg), ToastKind::Error); });
+        post([this, msg = std::string(e.what())] { notify(T("toast.rec.failed"), w(msg), ToastKind::Error); });
       }
     });
     return;
   }
   if (!session_) {
-    notify(L"Cattura in pausa", L"Riprendi la cattura dal menu per registrare", ToastKind::Error);
+    notify(T("toast.paused"), T("toast.paused.rec"), ToastKind::Error);
     return;
   }
   try {
@@ -405,12 +403,12 @@ void Controller::toggleRecord() {
     recorder_ = std::make_unique<Recorder>(session_->bus(), session_->tracks(), path, settings_.container,
                                            [this] { session_->requestKeyframe(); }, app);
     logInfo("registrazione avviata: {}", pathToUtf8(path));
-    notify(L"Registrazione avviata", w(std::format("Premi {} per fermare", settings_.hotkeys.toggleRecord)), ToastKind::Recording);
+    notify(T("toast.rec.started"), w(trf("toast.rec.started.body", settings_.hotkeys.toggleRecord)), ToastKind::Recording);
   } catch (const std::exception& e) {
     session_->hub().unpin();
     recorder_.reset();
     logError("avvio registrazione fallito: {}", e.what());
-    notify(L"Registrazione non avviata", w(e.what()), ToastKind::Error);
+    notify(T("toast.rec.notstarted"), w(e.what()), ToastKind::Error);
   }
   updateTray();
 }
@@ -421,33 +419,12 @@ void Controller::togglePause() {
     session_.reset();
     paused_ = true;
     logInfo("cattura in pausa");
-    notify(L"Cattura in pausa", L"Nessuna risorsa in uso finché non riprendi");
+    notify(T("toast.paused"), T("toast.paused.body"));
     updateTray();
   } else {
     startSession();
-    if (session_) notify(L"Cattura ripresa", L"Buffer di nuovo attivo");
+    if (session_) notify(T("toast.resumed"), T("toast.resumed.body"));
   }
-}
-
-void Controller::reloadSettings() {
-  if (recorder_) {
-    notify(L"Registrazione in corso", L"Ferma la registrazione prima di ricaricare le impostazioni", ToastKind::Error);
-    return;
-  }
-  settings_ = loadSettings(settingsPath_);
-  applyHotkeys();
-  const bool wasPaused = paused_;
-  session_.reset();
-  if (!wasPaused) startSession();
-  logInfo("impostazioni ricaricate");
-  if (session_ || wasPaused) notify(L"Impostazioni ricaricate", w(std::format("Buffer: ultimi {}", durationText(seconds(settings_.replaySeconds)))));
-}
-
-void Controller::openSettings() {
-  if (!fs::exists(settingsPath_)) saveSettings(settings_, settingsPath_);
-  const std::wstring args = L"\"" + settingsPath_.wstring() + L"\"";
-  ShellExecuteW(nullptr, L"open", L"notepad.exe", args.c_str(), nullptr, SW_SHOWNORMAL);
-  notify(L"Impostazioni", L"Salva il file, poi scegli \"Ricarica impostazioni\" dal menu");
 }
 
 void Controller::openFolder() {

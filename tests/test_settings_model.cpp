@@ -1,5 +1,5 @@
 #include <doctest/doctest.h>
-#include "ui/I18n.h"
+#include "core/I18n.h"
 #include "ui/SettingsModel.h"
 
 using namespace clipper;

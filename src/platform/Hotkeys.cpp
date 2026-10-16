@@ -1,4 +1,5 @@
 #include "platform/Hotkeys.h"
+#include "core/I18n.h"
 #include "core/Hotkey.h"
 #include <format>
 
@@ -21,11 +22,11 @@ std::map<Action, std::string> HotkeyManager::apply(const HotkeySettings& s) {
     if (text->empty()) continue;  // disabled
     const auto hk = parseHotkey(*text);
     if (!hk) {
-      errors[action] = std::format("Scorciatoia non valida: \"{}\"", *text);
+      errors[action] = trf("hk.err.invalid", *text);
       continue;
     }
     if (!RegisterHotKey(hwnd_, int(action), hk->mods | MOD_NOREPEAT, hk->vk))
-      errors[action] = std::format("Scorciatoia {} già usata da un altro programma", formatHotkey(*hk));
+      errors[action] = trf("hk.err.taken", formatHotkey(*hk));
   }
   return errors;
 }

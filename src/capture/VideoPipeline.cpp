@@ -1,4 +1,5 @@
 #include "capture/VideoPipeline.h"
+#include "core/I18n.h"
 #include "capture/Monitors.h"
 #include "core/SizeEstimate.h"
 #include <format>
@@ -67,10 +68,10 @@ void VideoPipeline::run() {
       if (keyRequested_.exchange(false)) encoder_->requestKeyframe();
       encoder_->encode(out, next);
     } catch (const std::exception& e) {
-      if (onWarning_) onWarning_(std::format("Errore cattura video: {}", e.what()));
+      if (onWarning_) onWarning_(trf("warn.video", std::string(e.what())));
       Sleep(500);
     } catch (const winrt::hresult_error& e) {
-      if (onWarning_) onWarning_("Errore cattura video: " + winrt::to_string(e.message()));
+      if (onWarning_) onWarning_(trf("warn.video", winrt::to_string(e.message())));
       Sleep(500);
     }
   }

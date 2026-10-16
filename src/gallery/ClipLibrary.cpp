@@ -1,7 +1,7 @@
 #include "gallery/ClipLibrary.h"
 #include "core/Text.h"
 #include "output/ClipWriter.h"
-#include "ui/I18n.h"
+#include "core/I18n.h"
 #include <algorithm>
 #include <ctime>
 #include <format>

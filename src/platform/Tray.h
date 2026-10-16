@@ -13,7 +13,6 @@ enum MenuCmd : UINT {
   CmdPause,
   CmdGallery,
   CmdSettings,
-  CmdReload,
   CmdOpenFolder,
   CmdQuit,
 };

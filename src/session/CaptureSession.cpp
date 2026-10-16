@@ -1,4 +1,5 @@
 #include "session/CaptureSession.h"
+#include "core/I18n.h"
 #include "capture/Monitors.h"
 #include "core/Paths.h"
 #include "core/SizeEstimate.h"
@@ -42,7 +43,7 @@ CaptureSession::CaptureSession(const Settings& s, WarnSink onWarning, GpuDevice 
     const auto monitors = listMonitors();
     const MonitorInfo* mon = pickMonitor(monitors, s.monitorIndex);
     if (!mon) throw std::runtime_error("nessun monitor trovato");
-    if (mon->index != s.monitorIndex && onWarning_) onWarning_("Monitor configurato non trovato: uso il principale");
+    if (mon->index != s.monitorIndex && onWarning_) onWarning_(tr("warn.monitor"));
     video_ = std::make_unique<VideoPipeline>(
         gpu.device ? gpu : createGpuDevice(),
         VideoPipelineConfig{mon->handle, s.outputHeight, s.fps, s.codec, s.quality, s.customKbps, s.captureCursor},

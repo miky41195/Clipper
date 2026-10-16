@@ -1,4 +1,5 @@
 #include "encode/VideoEncoder.h"
+#include "core/I18n.h"
 #include "core/Text.h"
 #include <codecapi.h>
 #include <mfapi.h>
@@ -450,7 +451,7 @@ std::unique_ptr<VideoEncoder> createVideoEncoderWithFallback(const GpuDevice& gp
     try {
       auto e = std::make_unique<VideoEncoder>(gpu, c, sink);
       if (i > 0 && warning)
-        *warning = std::format("Encoder {} non disponibile ({}), uso {}", codecName(cfg.codec), firstError, e->name());
+        *warning = trf("warn.encoder", codecName(cfg.codec), firstError, e->name());
       return e;
     } catch (const std::exception& ex) {
       if (firstError.empty()) firstError = ex.what();

@@ -5,7 +5,7 @@
 #include "ui/AudioApps.h"
 #include "ui/Color.h"
 #include "ui/HotkeyCapture.h"
-#include "ui/I18n.h"
+#include "core/I18n.h"
 #include "ui/Icons.h"
 #include "ui/Theme.h"
 #include "ui/Widgets.h"

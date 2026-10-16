@@ -1,7 +1,7 @@
 #include "ui/UiPreview.h"
 #include "ui/AppUi.h"
 #include "ui/Color.h"
-#include "ui/I18n.h"
+#include "core/I18n.h"
 #include "ui/UiWindow.h"
 #include <map>
 

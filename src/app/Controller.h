@@ -41,8 +41,6 @@ private:
   int saveAttempt_ = 0;
   void toggleRecord();
   void togglePause();
-  void reloadSettings();
-  void openSettings();
   void openFolder();
   void applyHotkeys();
   void runMenu();

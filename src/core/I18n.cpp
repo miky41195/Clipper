@@ -1,4 +1,4 @@
-#include "ui/I18n.h"
+#include "core/I18n.h"
 #include <atomic>
 #include <string>
 #include <unordered_map>
@@ -7,6 +7,55 @@ namespace clipper {
 namespace {
 
 const std::vector<I18nEntry> kTable = {
+    // tray menu + tooltips
+    {"tray.save", "Salva clip", "Save clip"},
+    {"tray.rec.start", "Avvia registrazione", "Start recording"},
+    {"tray.rec.stop", "Ferma registrazione", "Stop recording"},
+    {"tray.pause", "Metti in pausa", "Pause capture"},
+    {"tray.resume", "Riprendi cattura", "Resume capture"},
+    {"tray.folder", "Apri cartella clip", "Open clips folder"},
+    {"tray.quit", "Esci", "Quit"},
+    {"tray.tip.buffering", "Clipper · ultimi {} in memoria", "Clipper · last {} in memory"},
+    {"tray.tip.recording", "Clipper · registrazione in corso", "Clipper · recording"},
+    {"tray.tip.paused", "Clipper · in pausa", "Clipper · paused"},
+    {"tray.tip.off", "Clipper · cattura non attiva", "Clipper · capture off"},
+    // notifications
+    {"toast.started", "Clipper attivo", "Clipper is running"},
+    {"toast.started.body", "Ultimi {} pronti · {} per salvare", "Last {} ready · {} to save"},
+    {"toast.window", "Finestra non disponibile", "Window unavailable"},
+    {"toast.hotkeys", "Scorciatoie da controllare", "Check your shortcuts"},
+    {"toast.capture.failed", "Cattura non avviata", "Capture did not start"},
+    {"toast.paused", "Cattura in pausa", "Capture paused"},
+    {"toast.paused.save", "Riprendi la cattura dal menu per salvare clip", "Resume capture from the menu to save clips"},
+    {"toast.paused.rec", "Riprendi la cattura dal menu per registrare", "Resume capture from the menu to record"},
+    {"toast.paused.body", "Nessuna risorsa in uso finché non riprendi", "Nothing runs until you resume"},
+    {"toast.resumed", "Cattura ripresa", "Capture resumed"},
+    {"toast.resumed.body", "Buffer di nuovo attivo", "Buffer active again"},
+    {"toast.starting", "Cattura in avvio", "Capture starting"},
+    {"toast.starting.body", "Salvo la clip appena il buffer è pronto", "The clip is saved as soon as the buffer is ready"},
+    {"toast.empty", "Buffer vuoto", "Buffer empty"},
+    {"toast.empty.body", "La cattura non sta producendo video: controlla il log", "Capture is not producing video: check the log"},
+    {"toast.saved", "Clip salvata", "Clip saved"},
+    {"toast.partial", " (buffer in riempimento)", " (buffer still filling)"},
+    {"toast.savefail", "Salvataggio fallito", "Save failed"},
+    {"toast.rec.started", "Registrazione avviata", "Recording started"},
+    {"toast.rec.started.body", "Premi {} per fermare", "Press {} to stop"},
+    {"toast.rec.notstarted", "Registrazione non avviata", "Recording did not start"},
+    {"toast.rec.stopped", "Registrazione fermata", "Recording stopped"},
+    {"toast.rec.saving", "Salvataggio in corso…", "Saving…"},
+    {"toast.rec.saved", "Registrazione salvata", "Recording saved"},
+    {"toast.rec.failed", "Registrazione fallita", "Recording failed"},
+    // warnings and errors
+    {"apply.recording", "Ferma la registrazione prima di cambiare le impostazioni di cattura",
+     "Stop recording before changing capture settings"},
+    {"hk.err.invalid", "Scorciatoia non valida: \"{}\"", "Invalid shortcut: \"{}\""},
+    {"hk.err.taken", "Scorciatoia {} già usata da un altro programma", "Shortcut {} is already used by another program"},
+    {"warn.disk", "Scrittura del buffer su disco fallita: uso solo la RAM con durata ridotta",
+     "Writing the buffer to disk failed: using RAM only, with a shorter length"},
+    {"warn.monitor", "Monitor configurato non trovato: uso il principale", "Configured monitor not found: using the primary one"},
+    {"warn.mic", "Microfono non disponibile: registro senza voce", "Microphone unavailable: recording without voice"},
+    {"warn.encoder", "Encoder {} non disponibile ({}), uso {}", "{} encoder unavailable ({}), using {}"},
+    {"warn.video", "Errore cattura video: {}", "Video capture error: {}"},
     // navigation + status
     {"nav.gallery", "Galleria", "Gallery"},
     {"nav.settings", "Impostazioni", "Settings"},

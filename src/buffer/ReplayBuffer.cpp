@@ -1,4 +1,5 @@
 #include "buffer/ReplayBuffer.h"
+#include "core/I18n.h"
 #include <algorithm>
 #include <format>
 
@@ -157,7 +158,7 @@ void ReplayBuffer::writerLoop() {
           cfg_.duration = std::min(cfg_.duration, cfg_.fallbackDuration);
           evictLocked();
         }
-        if (onWarning_) onWarning_("Scrittura del buffer su disco fallita: uso solo la RAM con durata ridotta");
+        if (onWarning_) onWarning_(tr("warn.disk"));
       }
     }
     seg.reset();

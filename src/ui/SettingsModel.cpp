@@ -1,7 +1,7 @@
 #include "ui/SettingsModel.h"
 #include "capture/Monitors.h"
 #include "core/SizeEstimate.h"
-#include "ui/I18n.h"
+#include "core/I18n.h"
 #include <format>
 
 namespace clipper {

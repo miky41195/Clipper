@@ -3,7 +3,7 @@
 #include "core/Text.h"
 #include "gallery/Exporter.h"
 #include "gallery/FileOps.h"
-#include "ui/I18n.h"
+#include "core/I18n.h"
 #include "ui/Icons.h"
 #include "ui/ImageIO.h"
 #include "ui/Theme.h"

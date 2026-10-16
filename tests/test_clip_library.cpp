@@ -6,7 +6,7 @@
 #include "encode/AudioEncoder.h"
 #include "gallery/ClipLibrary.h"
 #include "output/ClipWriter.h"
-#include "ui/I18n.h"
+#include "core/I18n.h"
 
 using namespace clipper;
 namespace fs = std::filesystem;

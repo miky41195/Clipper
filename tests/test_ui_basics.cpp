@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 #include <cstring>
 #include "ui/Color.h"
-#include "ui/I18n.h"
+#include "core/I18n.h"
 
 using namespace clipper;
 
@@ -20,6 +20,16 @@ TEST_CASE("every i18n key has italian and english text") {
     CHECK(std::strlen(e.en) > 0);
   }
   CHECK(i18nTable().size() > 20);
+}
+
+TEST_CASE("tray, toast and warning texts are translated") {
+  setLanguage("en");
+  CHECK(std::string(tr("tray.quit")) == "Quit");
+  CHECK(std::string(tr("toast.saved")) == "Clip saved");
+  CHECK(trf("hk.err.taken", std::string("Alt+F10")) == "Shortcut Alt+F10 is already used by another program");
+  setLanguage("it");
+  CHECK(std::string(tr("tray.quit")) == "Esci");
+  CHECK(trf("toast.rec.started.body", std::string("Alt+Shift+F9")) == "Premi Alt+Shift+F9 per fermare");
 }
 
 TEST_CASE("tr follows the language and falls back to the key") {

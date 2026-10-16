@@ -1,4 +1,5 @@
 #include "audio/AudioCapture.h"
+#include "core/I18n.h"
 #include <windows.h>
 #include <combaseapi.h>
 #include <algorithm>
@@ -20,7 +21,7 @@ AudioCapture::AudioCapture(AudioHub& hub, AudioCaptureConfig cfg, WarnSink onWar
     } catch (...) {
       hub_.removeTrack(micTrack_);
       micTrack_ = -1;
-      if (onWarning_) onWarning_("Microfono non disponibile: registro senza voce");
+      if (onWarning_) onWarning_(tr("warn.mic"));
     }
   }
   thread_ = std::thread([this] {
