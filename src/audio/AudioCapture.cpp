@@ -37,7 +37,7 @@ AudioCapture::AudioCapture(AudioHub& hub, AudioCaptureConfig cfg, WarnSink onWar
       cv_.wait_for(lk, std::chrono::seconds(1), [&] { return stop_; });
     }
     lk.unlock();
-    for (auto& [exe, app] : apps_) dropApp(app);
+    for (auto& [exe, app] : apps_) dropApp(exe, app);
     apps_.clear();
     CoUninitialize();
   });
@@ -53,7 +53,8 @@ AudioCapture::~AudioCapture() {
   mic_.reset();
 }
 
-void AudioCapture::dropApp(App& app) {
+void AudioCapture::dropApp(const std::string& exe, App& app) {
+  if (app.track != hub_.othersTrackId()) retired_[exe] = app.track;  // reused if the app plays again
   for (auto& [pid, cap] : app.captures) hub_.detach(app.track, cap.second);
   app.captures.clear();
   if (app.track != hub_.othersTrackId()) hub_.removeTrack(app.track);
@@ -66,7 +67,8 @@ void AudioCapture::refresh() {
     auto it = apps_.find(g.exe);
     if (it == apps_.end()) {
       App app;
-      app.track = hub_.trackForNewApp(appDisplayName(g.roots.front(), g.exe));
+      const auto old = retired_.find(g.exe);
+      app.track = hub_.trackForNewApp(appDisplayName(g.roots.front(), g.exe), old == retired_.end() ? -1 : old->second);
       it = apps_.emplace(g.exe, std::move(app)).first;
     }
     App& app = it->second;
@@ -95,7 +97,7 @@ void AudioCapture::refresh() {
   }
   for (auto it = apps_.begin(); it != apps_.end();) {
     if (t - it->second.lastSeen > kGoneAfter) {
-      dropApp(it->second);
+      dropApp(it->first, it->second);
       it = apps_.erase(it);
     } else {
       ++it;

@@ -94,6 +94,22 @@ TEST_CASE("snapshot lists only tracks with packets in the window") {
   CHECK(s.tracks[1].id == 1);
 }
 
+TEST_CASE("a track that ends and comes back keeps one entry") {
+  ReplayBuffer b(ramConfig(20));
+  b.setTrack(videoTrack());
+  b.setTrack(audioTrack(3, "Spotify"));
+  const Ticks period = kTicksPerSecond / 30;
+  for (Ticks v = 0; v < seconds(6); v += period) {
+    b.push(testPacket(kVideoTrack, v, (v / period) % 30 == 0));
+    if (v < seconds(2) || v >= seconds(4)) b.push(testPacket(3, v, true, 10));
+    if (v == seconds(2)) b.endTrack(3);
+    if (v == seconds(4) - period) b.setTrack(audioTrack(3, "Spotify"));
+  }
+  const auto s = b.snapshot(seconds(20));
+  REQUIRE(s.tracks.size() == 2);
+  CHECK(s.tracks[1].name == "Spotify");
+}
+
 TEST_CASE("video format change clears the buffer") {
   ReplayBuffer b(ramConfig(10));
   b.setTrack(videoTrack(1920, 1080));

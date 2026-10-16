@@ -30,13 +30,14 @@ private:
     Ticks lastSeen = 0;
     std::map<uint32_t, std::pair<std::unique_ptr<LoopbackCapture>, std::shared_ptr<PcmSource>>> captures;
   };
-  void dropApp(App& app);
+  void dropApp(const std::string& exe, App& app);
 
   AudioHub& hub_;
   AudioCaptureConfig cfg_;
   WarnSink onWarning_;
   std::map<std::string, App> apps_;
   std::set<uint32_t> failedPids_;
+  std::map<std::string, int> retired_;  // exe -> track id it had before going silent
   int micTrack_ = -1;
   std::unique_ptr<MicCapture> mic_;
   std::shared_ptr<PcmSource> micSource_;

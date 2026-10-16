@@ -19,9 +19,9 @@ AudioHub::AudioHub(AudioHubConfig cfg, ChunkSink onChunk, TrackSink onTrack, End
   }
 }
 
-int AudioHub::addTrackLocked(const std::string& name) {
+int AudioHub::addTrackLocked(const std::string& name, int id) {
   Track t;
-  t.info.id = nextId_++;
+  t.info.id = id > 0 ? id : nextId_++;
   t.info.kind = TrackKind::Audio;
   t.info.codec = Codec::AAC;
   t.info.name = name;
@@ -62,8 +62,11 @@ void AudioHub::detach(int id, const std::shared_ptr<PcmSource>& src) {
   if (auto it = tracks_.find(id); it != tracks_.end()) std::erase(it->second.sources, src);
 }
 
-int AudioHub::trackForNewApp(const std::string& name) {
+int AudioHub::trackForNewApp(const std::string& name, int preferredId) {
   std::lock_guard lk(mu_);
+  if (preferredId > 0 && tracks_.contains(preferredId)) return preferredId;
+  const bool reuse = preferredId > 0 && preferredId < nextId_ && (!pinned_ || pinnedIds_.contains(preferredId));
+  if (reuse) return addTrackLocked(name, preferredId);
   if (!pinned_) return addTrackLocked(name);
   if (othersId_ < 0) othersId_ = addTrackLocked("Altre app");
   return othersId_;
@@ -72,6 +75,8 @@ int AudioHub::trackForNewApp(const std::string& name) {
 void AudioHub::pin() {
   std::lock_guard lk(mu_);
   pinned_ = true;
+  pinnedIds_.clear();
+  for (const auto& [id, t] : tracks_) pinnedIds_.insert(id);
   if (othersId_ < 0) othersId_ = addTrackLocked("Altre app");
 }
 

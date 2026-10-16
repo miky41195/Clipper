@@ -143,6 +143,31 @@ TEST_CASE("while pinned new apps share one 'Altre app' track") {
   CHECK(r.added.back().name == "Edge");
 }
 
+TEST_CASE("a returning app gets its previous track id back") {
+  Recorder r;
+  auto hub = r.make(false);
+  const int spotify = hub.trackForNewApp("Spotify");
+  hub.removeTrack(spotify);  // silent for a while
+  const int again = hub.trackForNewApp("Spotify", spotify);
+  CHECK(again == spotify);
+  CHECK(r.added.back().id == spotify);
+  CHECK(r.added.back().name == "Spotify");
+  CHECK(hub.trackForNewApp("Spotify", spotify) == spotify);  // already alive: no duplicate
+  CHECK(r.added.size() == 2);
+}
+
+TEST_CASE("while pinned only tracks known at pin time are revived") {
+  Recorder r;
+  auto hub = r.make(false);
+  const int game = hub.trackForNewApp("Gioco");
+  const int music = hub.trackForNewApp("Spotify");
+  hub.removeTrack(music);  // gone before the recording started
+  hub.pin();
+  hub.removeTrack(game);   // goes silent during the recording
+  CHECK(hub.trackForNewApp("Gioco", game) == game);
+  CHECK(hub.trackForNewApp("Spotify", music) == hub.othersTrackId());
+}
+
 TEST_CASE("unpin removes an unused 'Altre app' track") {
   Recorder r;
   auto hub = r.make(false);

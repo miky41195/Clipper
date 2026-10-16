@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -32,7 +33,9 @@ public:
   void removeTrack(int id);
   void attach(int id, std::shared_ptr<PcmSource> src);
   void detach(int id, const std::shared_ptr<PcmSource>& src);
-  int trackForNewApp(const std::string& name);  // while pinned: the shared "Altre app" track
+  // preferredId: the track this app had before it went silent; reused so it stays one track in clips.
+  // While pinned (recording) only ids that existed at pin time are reused, others go to "Altre app".
+  int trackForNewApp(const std::string& name, int preferredId = -1);
   void pin();
   void unpin();
   bool pinned() const;
@@ -46,7 +49,7 @@ private:
     TrackInfo info;
     std::vector<std::shared_ptr<PcmSource>> sources;
   };
-  int addTrackLocked(const std::string& name);
+  int addTrackLocked(const std::string& name, int id = -1);
 
   AudioHubConfig cfg_;
   ChunkSink onChunk_;
@@ -58,6 +61,7 @@ private:
   int mixId_ = -1;
   int othersId_ = -1;
   bool pinned_ = false;
+  std::set<int> pinnedIds_;
   bool started_ = false;
   Ticks origin_ = 0;
   uint64_t chunkIndex_ = 0;
