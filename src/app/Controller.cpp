@@ -309,6 +309,17 @@ void Controller::startSession() {
     session_ = std::make_unique<CaptureSession>(settings_, [this](const std::string& m) { warnAsync(m); }, sharedGpu());
     paused_ = false;
     logInfo("cattura avviata: {} fps, codec {}, buffer {} s", settings_.fps, int(settings_.codec), settings_.replaySeconds);
+    // On a GPU without the chosen codec (e.g. AV1 on older cards) the encoder fell back: remember the codec
+    // that works so the warning appears only once.
+    for (const auto& t : session_->tracks())
+      if (t.kind == TrackKind::Video && t.codec != settings_.codec) {
+        logInfo("codec non supportato dalla GPU: passo a {}", int(t.codec));
+        settings_.codec = t.codec;
+        try {
+          saveSettings(settings_, settingsPath_);
+        } catch (...) {
+        }
+      }
   } catch (const std::exception& e) {
     session_.reset();
     logError("avvio cattura fallito: {}", e.what());

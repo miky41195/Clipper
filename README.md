@@ -19,6 +19,17 @@ Registratore di clip leggero per Windows 11. Tiene sempre pronti gli ultimi N se
 
 Le impostazioni sono anche in `%APPDATA%\Clipper\settings.json`.
 
+## Installer (da dare ad amici)
+
+```
+make_installer.cmd      :: -> dist\Clipper-Setup-1.0.0.exe (~38 MB)
+```
+
+- Installa per l'utente corrente in `%LOCALAPPDATA%\Programs\Clipper`: non servono permessi di amministratore né la runtime di Visual C++.
+- Crea il collegamento nel menu Start (desktop e avvio con Windows sono opzionali) e si disinstalla da *Impostazioni → App*. La disinstallazione toglie cache e log; impostazioni e clip restano.
+- Requisiti: Windows 10 2004+ o 11 a 64 bit. GPU NVIDIA, AMD o Intel recenti usano l'encoder hardware. Se la GPU non supporta AV1, al primo avvio Clipper passa da solo a HEVC o H.264.
+- L'installer non è firmato digitalmente, quindi Windows SmartScreen può mostrare "Windows ha protetto il PC": *Ulteriori informazioni → Esegui comunque*.
+
 ## Build e test
 
 ```

@@ -1,0 +1,12 @@
+Clipper usa questi componenti di terze parti.
+
+FFmpeg (libavcodec, libavformat, libavutil, libswscale, libswresample)
+  Licenza: GNU LGPL 2.1 o successiva (vedi FFmpeg-LICENSE.txt).
+  Build: BtbN FFmpeg-Builds, variante "lgpl-shared", versione 8.1.
+  Sorgenti: https://ffmpeg.org/download.html  -  https://github.com/BtbN/FFmpeg-Builds
+  Le librerie sono DLL separate nella cartella del programma e possono essere sostituite
+  con altre build compatibili.
+
+dav1d (decodifica AV1, incluso in libavcodec) - licenza BSD 2-Clause.
+Dear ImGui - licenza MIT - https://github.com/ocornut/imgui
+nlohmann/json - licenza MIT - https://github.com/nlohmann/json

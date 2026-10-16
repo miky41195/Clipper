@@ -1,0 +1,32 @@
+#include <winver.h>
+
+1 ICON "clipper.ico"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1,0,0,0
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE 0x0L
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "041004b0"
+    BEGIN
+      VALUE "CompanyName", "Clipper"
+      VALUE "FileDescription", "Clipper"
+      VALUE "FileVersion", "1.0.0"
+      VALUE "InternalName", "clipper"
+      VALUE "OriginalFilename", "clipper.exe"
+      VALUE "ProductName", "Clipper"
+      VALUE "ProductVersion", "1.0.0"
+      VALUE "LegalCopyright", "Usa FFmpeg (LGPL 2.1)"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x410, 1200
+  END
+END

@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+# Static C++ runtime: friends' PCs need no Visual C++ redistributable.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 if(MSVC)
   add_compile_options(/utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus /bigobj)
 endif()
@@ -40,8 +42,14 @@ target_compile_definitions(imgui PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS)
 if(MSVC)
   target_compile_options(imgui PRIVATE /W0)
 endif()
-file(GLOB FFMPEG_DLLS ${ffmpeg_SOURCE_DIR}/bin/*.dll)
+# Only the libraries Clipper links (the package also ships avfilter/avdevice, ~35 MB unused).
+set(FFMPEG_DLLS)
+foreach(lib avcodec avformat avutil swscale swresample)
+  file(GLOB dll ${ffmpeg_SOURCE_DIR}/bin/${lib}-*.dll)
+  list(APPEND FFMPEG_DLLS ${dll})
+endforeach()
 file(COPY ${FFMPEG_DLLS} DESTINATION ${CMAKE_BINARY_DIR}/bin)
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/avfilter-11.dll ${CMAKE_BINARY_DIR}/bin/avdevice-62.dll)
 
 file(GLOB_RECURSE CLIPPER_CORE_SRC CONFIGURE_DEPENDS src/*.cpp)
 list(FILTER CLIPPER_CORE_SRC EXCLUDE REGEX ".*/src/app/main\\.cpp$")
@@ -52,7 +60,7 @@ target_link_libraries(clipper_core PUBLIC
   windowsapp windowscodecs dwmapi d3dcompiler d3d11 dxgi d2d1 dwrite mfplat mfuuid mf wmcodecdspuuid strmiids
   mmdevapi winmm version shell32 shcore ole32 oleaut32 user32 gdi32 propsys psapi)
 
-add_executable(clipper WIN32 src/app/main.cpp)
+add_executable(clipper WIN32 src/app/main.cpp src/app/clipper.rc)
 target_link_libraries(clipper PRIVATE clipper_core)
 
 file(GLOB CLIPPER_TEST_SRC CONFIGURE_DEPENDS tests/*.cpp)
