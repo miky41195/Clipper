@@ -329,7 +329,7 @@ void Controller::saveClip() {
     try {
       // Path resolved here, sequentially, so rapid saves never collide.
       const auto path = uniquePath(outputDir(s), sanitizeFileName(expandNameTemplate(s.nameTemplate, app, when)), "." + s.container);
-      writeSnapshot(snap, path, s.container);
+      writeSnapshot(snap, path, s.container, app);
       const auto size = fs::file_size(path);
       const Ticks length = snap.end - snap.start;
       logInfo("clip salvata: {} ({}, {}) in {} ms", pathToUtf8(path), durationText(length), formatBytes(size), (now() - t0) / 10'000);
@@ -374,10 +374,11 @@ void Controller::toggleRecord() {
   }
   try {
     session_->hub().pin();
-    const auto stem = sanitizeFileName(expandNameTemplate(settings_.nameTemplate, foregroundAppName(), std::chrono::system_clock::now()));
+    const std::string app = foregroundAppName();
+    const auto stem = sanitizeFileName(expandNameTemplate(settings_.nameTemplate, app, std::chrono::system_clock::now()));
     const auto path = uniquePath(outputDir(settings_), stem, "." + settings_.container);
     recorder_ = std::make_unique<Recorder>(session_->bus(), session_->tracks(), path, settings_.container,
-                                           [this] { session_->requestKeyframe(); });
+                                           [this] { session_->requestKeyframe(); }, app);
     logInfo("registrazione avviata: {}", pathToUtf8(path));
     notify(L"Registrazione avviata", w(std::format("Premi {} per fermare", settings_.hotkeys.toggleRecord)), ToastKind::Recording);
   } catch (const std::exception& e) {

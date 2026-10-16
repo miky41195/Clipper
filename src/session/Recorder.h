@@ -13,7 +13,7 @@ namespace clipper {
 class Recorder {
 public:
   Recorder(PacketBus& bus, std::vector<TrackInfo> tracks, std::filesystem::path finalPath, std::string container,
-           std::function<void()> requestKeyframe);
+           std::function<void()> requestKeyframe, const std::string& app = {});
   ~Recorder();
   Recorder(const Recorder&) = delete;
   Recorder& operator=(const Recorder&) = delete;

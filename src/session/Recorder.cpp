@@ -4,11 +4,12 @@ namespace clipper {
 namespace fs = std::filesystem;
 
 Recorder::Recorder(PacketBus& bus, std::vector<TrackInfo> tracks, fs::path finalPath, std::string container,
-                   std::function<void()> requestKeyframe)
+                   std::function<void()> requestKeyframe, const std::string& app)
     : bus_(bus), finalPath_(std::move(finalPath)), container_(std::move(container)) {
   workPath_ = finalPath_;
   workPath_.replace_extension(L".rec.mkv");
   writer_ = std::make_unique<ClipWriter>(workPath_, "mkv", std::move(tracks));
+  if (!app.empty()) writer_->setApp(app);
   subscription_ = bus_.subscribe([this](const Packet& p) {
     std::lock_guard lk(mu_);
     if (stopped_) return;

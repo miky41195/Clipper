@@ -211,9 +211,14 @@ void ClipWriter::finish() {
 
 Ticks ClipWriter::origin() const { return impl_->origin; }
 
-void writeSnapshot(const ReplayBuffer::Snapshot& snap, const fs::path& file, std::string_view container) {
+void ClipWriter::setApp(const std::string& app) {
+  if (impl_->fmt && !impl_->header) av_dict_set(&impl_->fmt->metadata, "comment", (std::string(kAppTagPrefix) + app).c_str(), 0);
+}
+
+void writeSnapshot(const ReplayBuffer::Snapshot& snap, const fs::path& file, std::string_view container, const std::string& app) {
   if (snap.empty()) throw std::runtime_error("buffer vuoto");
   ClipWriter w(file, container, snap.tracks);
+  if (!app.empty()) w.setApp(app);
   snap.forEach([&](const Packet& p) { w.write(p); });
   w.finish();
 }
@@ -234,6 +239,7 @@ void remux(const fs::path& src, const fs::path& dst) {
     if (c->pb) avio_closep(&c->pb);
     avformat_free_context(c);
   });
+  av_dict_copy(&out->metadata, in->metadata, 0);
   for (unsigned i = 0; i < in->nb_streams; ++i) {
     AVStream* is = in->streams[i];
     AVStream* os = avformat_new_stream(out, nullptr);

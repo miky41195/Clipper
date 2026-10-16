@@ -19,6 +19,8 @@ public:
   // Output starts at the first video keyframe; earlier audio with pts >= that keyframe is kept.
   void write(const Packet& p);
   void finish();
+  // Tags the file with the app it was recorded from (format "comment" = "clipper:app=<name>").
+  void setApp(const std::string& app);
   Ticks origin() const;
 
   struct Impl;
@@ -27,7 +29,9 @@ private:
   std::unique_ptr<Impl> impl_;
 };
 
-void writeSnapshot(const ReplayBuffer::Snapshot& snap, const std::filesystem::path& file, std::string_view container);
+void writeSnapshot(const ReplayBuffer::Snapshot& snap, const std::filesystem::path& file, std::string_view container,
+                   const std::string& app = {});
+inline constexpr const char* kAppTagPrefix = "clipper:app=";
 void remux(const std::filesystem::path& src, const std::filesystem::path& dst);
 std::vector<uint8_t> extractExtradata(Codec codec, const std::vector<uint8_t>& keyframe);
 
