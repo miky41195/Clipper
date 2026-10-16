@@ -151,8 +151,19 @@ void UiWindow::destroy() {
     ImGui::DestroyContext(ctx_);
     ctx_ = nullptr;
   }
+  if (context_) {
+    // D3D11 defers destruction until the pipeline lets go of objects: unbind everything and flush,
+    // otherwise the driver keeps the swap chain / textures alive after the window is gone.
+    context_->OMSetRenderTargets(0, nullptr, nullptr);
+    context_->ClearState();
+    context_->Flush();
+  }
   rtv_ = nullptr;
   swap_ = nullptr;
+  if (context_) {
+    context_->ClearState();
+    context_->Flush();
+  }
   context_ = nullptr;
   device_ = nullptr;
   setUiDevice(nullptr);

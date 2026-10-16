@@ -204,6 +204,11 @@ LRESULT Controller::handle(UINT msg, WPARAM wp, LPARAM lp) {
     (*fn)();
     return 0;
   }
+  if (msg == WM_TIMER && wp == kSaveRetryTimer) {
+    KillTimer(hwnd_, kSaveRetryTimer);
+    saveClip(saveAttempt_);
+    return 0;
+  }
   if (msg == WM_HOTKEY) {
     switch (HotkeyManager::fromId(wp).value_or(Action(0))) {
       case Action::SaveClip: saveClip(); break;
@@ -316,14 +321,24 @@ void Controller::startSession() {
   updateTray();
 }
 
-void Controller::saveClip() {
+void Controller::saveClip(int attempt) {
+  if (attempt == 0) logInfo("salvataggio clip richiesto");
   if (!session_) {
     notify(L"Cattura in pausa", L"Riprendi la cattura dal menu per salvare clip", ToastKind::Error);
     return;
   }
   auto snap = session_->snapshot(seconds(settings_.replaySeconds));
+  const bool tooShort = snap.empty() || snap.end - snap.start < seconds(std::min(2, settings_.replaySeconds));
+  if (tooShort && attempt < kSaveRetries) {
+    // Capture just started: give the buffer a moment, then save what there is (a shorter clip).
+    if (attempt == 0) notify(L"Cattura in avvio", L"Salvo la clip appena il buffer è pronto");
+    saveAttempt_ = attempt + 1;
+    SetTimer(hwnd_, kSaveRetryTimer, 250, nullptr);
+    return;
+  }
   if (snap.empty()) {
-    notify(L"Buffer vuoto", L"Aspetta qualche secondo e riprova", ToastKind::Error);
+    logWarn("salvataggio clip: buffer vuoto dopo {} tentativi", attempt);
+    notify(L"Buffer vuoto", L"La cattura non sta producendo video: controlla il log", ToastKind::Error);
     return;
   }
   const std::string app = foregroundAppName();
@@ -338,9 +353,11 @@ void Controller::saveClip() {
       const auto size = fs::file_size(path);
       const Ticks length = snap.end - snap.start;
       logInfo("clip salvata: {} ({}, {}) in {} ms", pathToUtf8(path), durationText(length), formatBytes(size), (now() - t0) / 10'000);
-      post([this, length, size, sounds = s.sounds] {
+      const bool partial = length < seconds(s.replaySeconds - 1);
+      post([this, length, size, partial, sounds = s.sounds] {
         if (ui_ && ui_->open()) { app_->clipsChanged(); ui_->requestFrames(); }
-        notify(L"Clip salvata", w(std::format("{} · {}", durationText(length), formatBytes(size))));
+        notify(L"Clip salvata", w(std::format("{} · {}{}", durationText(length), formatBytes(size),
+                                              partial ? " (buffer in riempimento)" : "")));
         if (sounds) playSaveSound();
       });
     } catch (const std::exception& e) {

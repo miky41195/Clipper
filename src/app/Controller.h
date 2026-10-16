@@ -35,7 +35,10 @@ private:
   LRESULT handle(UINT msg, WPARAM wp, LPARAM lp);
 
   void startSession();
-  void saveClip();
+  void saveClip(int attempt = 0);
+  static constexpr UINT_PTR kSaveRetryTimer = 7;
+  static constexpr int kSaveRetries = 12;  // x 250 ms
+  int saveAttempt_ = 0;
   void toggleRecord();
   void togglePause();
   void reloadSettings();
