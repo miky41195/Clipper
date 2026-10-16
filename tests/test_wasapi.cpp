@@ -1,6 +1,8 @@
 #include <doctest/doctest.h>
 #include <windows.h>
 #include <algorithm>
+#include <cstdlib>
+#include <string_view>
 #include <vector>
 #include "audio/Wasapi.h"
 
@@ -8,6 +10,13 @@ using namespace clipper;
 
 TEST_SUITE("audio-device") {
   TEST_CASE("process loopback captures a playing app") {
+    // Plays a sound out loud: only when explicitly requested.
+    char flag[8]{};
+    size_t len = 0;
+    if (getenv_s(&len, flag, "CLIPPER_AUDIO_TESTS") != 0 || std::string_view(flag) != "1") {
+      MESSAGE("skipped: set CLIPPER_AUDIO_TESTS=1 to run (plays audio)");
+      return;
+    }
     wchar_t cmd[] =
         L"powershell -NoProfile -Command \"$p=New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Alarm01.wav'; "
         L"$p.PlaySync(); $p.PlaySync()\"";

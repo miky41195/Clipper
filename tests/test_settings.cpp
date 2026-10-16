@@ -104,6 +104,16 @@ TEST_CASE("sanitize clamps garbage values") {
   CHECK(r.nameTemplate == "{app}_{date}_{time}");
 }
 
+TEST_CASE("invalid accent colour falls back to default") {
+  Settings s;
+  s.accent = "#12345";
+  CHECK(sanitize(s).accent == "#3DDC84");
+  s.accent = "#a1B2c3";
+  CHECK(sanitize(s).accent == "#a1B2c3");
+  s.accent = "zzzzzzz";
+  CHECK(sanitize(s).accent == "#3DDC84");
+}
+
 TEST_CASE("effectiveVideoKbps uses preset or custom") {
   Settings s;
   s.codec = Codec::H264;

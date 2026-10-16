@@ -14,7 +14,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(HotkeySettings, saveClip, toggle
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Settings, monitorIndex, outputHeight, fps, codec, quality, customKbps,
                                                 captureCursor, replaySeconds, ramThresholdSeconds, tempDir, audioBlacklist,
                                                 micDeviceId, captureMic, mixTrack, audioKbps, hotkeys, outputDir, container,
-                                                nameTemplate, sounds, toastCorner, language)
+                                                nameTemplate, sounds, toastCorner, language, accent)
 
 namespace fs = std::filesystem;
 
@@ -38,6 +38,10 @@ Settings sanitize(Settings s) {
   if (s.monitorIndex < 0) s.monitorIndex = 0;
   for (auto& e : s.audioBlacklist) e = toLowerAscii(e);
   if (s.nameTemplate.empty()) s.nameTemplate = "{app}_{date}_{time}";
+  const bool hexOk = s.accent.size() == 7 && s.accent[0] == '#' &&
+                     std::all_of(s.accent.begin() + 1, s.accent.end(), [](char c) { return std::isxdigit(static_cast<unsigned char>(c)) != 0; });
+  if (!hexOk) s.accent = Settings{}.accent;
+  if (s.language != "it" && s.language != "en") s.language = "it";
   return s;
 }
 

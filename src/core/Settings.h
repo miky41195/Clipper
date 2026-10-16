@@ -42,6 +42,7 @@ struct Settings {
   bool sounds = true;
   std::string toastCorner = "top-right";
   std::string language = "it";
+  std::string accent = "#3DDC84";
 };
 
 Settings sanitize(Settings s);
