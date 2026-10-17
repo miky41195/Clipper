@@ -20,7 +20,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Set up MSVC developer environment
         uses: ilammy/msvc-dev-cmd@v1
