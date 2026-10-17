@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build and test (MSVC x64)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up MSVC developer environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+      - name: Build
+        run: cmake --build build
+
+      # Runners have no GPU, display or audio device: CTest runs only the unit
+      # suites (gpu, capture, audio-device and desktop are excluded in CMakeLists.txt).
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipper-${{ github.sha }}
+          path: |
+            build/bin/clipper.exe
+            build/bin/*.dll
+          retention-days: 14
