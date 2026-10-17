@@ -1,7 +1,12 @@
 @echo off
-rem make_installer.cmd  ->  dist\Clipper-Setup-<version>.exe
+rem make_installer.cmd [version]  ->  dist\Clipper-Setup-<version>.exe
 rem Release build in build-release, staged with only what the app needs, packed with Inno Setup 6.
+rem version: 1.2.0 or v1.2.0 (the release workflow passes the git tag); default is the one in clipper.iss.
 setlocal
+set "VERSION=%~1"
+if defined VERSION if /i "%VERSION:~0,1%"=="v" set "VERSION=%VERSION:~1%"
+set "VERSION_DEF="
+if defined VERSION set "VERSION_DEF=/DAppVersion=%VERSION%"
 set "ROOT=%~dp0"
 set "BUILD=%ROOT%build-release"
 set "STAGE=%BUILD%\stage"
@@ -11,7 +16,8 @@ if not exist "%ISCC%" (
   echo Inno Setup 6 non trovato: winget install JRSoftware.InnoSetup
   exit /b 1
 )
-call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
+rem Already in a developer environment (CI, Developer Prompt): skip vcvars.
+if not defined VSCMD_VER call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 if not exist "%BUILD%\build.ninja" (
   cmake -S "%ROOT%." -B "%BUILD%" -G Ninja -DCMAKE_BUILD_TYPE=Release || exit /b 1
 )
@@ -28,6 +34,6 @@ copy /y "%BUILD%\_deps\ffmpeg-src\LICENSE.txt" "%STAGE%\licenses\FFmpeg-LICENSE.
 copy /y "%ROOT%installer\THIRD-PARTY.txt" "%STAGE%\licenses\" >nul
 
 if not exist "%ROOT%dist" mkdir "%ROOT%dist"
-"%ISCC%" /Q "/DStageDir=%STAGE%" "%ROOT%installer\clipper.iss" || exit /b 1
+"%ISCC%" /Q "/DStageDir=%STAGE%" %VERSION_DEF% "%ROOT%installer\clipper.iss" || exit /b 1
 echo.
 dir /b "%ROOT%dist\Clipper-Setup-*.exe"

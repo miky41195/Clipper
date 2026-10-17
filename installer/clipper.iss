@@ -2,7 +2,9 @@
 ; Per-user install: no administrator rights needed.
 
 #define AppName "Clipper"
-#define AppVersion "1.0.0"
+#ifndef AppVersion
+  #define AppVersion "1.0.0"
+#endif
 #ifndef StageDir
   #define StageDir "..\build-release\stage"
 #endif
