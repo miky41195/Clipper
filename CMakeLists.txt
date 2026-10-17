@@ -19,8 +19,11 @@ FetchContent_Declare(doctest
   GIT_SHALLOW TRUE)
 FetchContent_Declare(json
   URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+# Pinned month-end build (BtbN keeps those for ~2 years): reproducible builds, and the exact
+# FFmpeg source the shipped LGPL DLLs come from (n8.1.3-9-g29e619e767) stays identifiable.
 FetchContent_Declare(ffmpeg
-  URL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-win64-lgpl-shared-8.1.zip
+  URL https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-win64-lgpl-shared-8.1.zip
+  URL_HASH SHA256=3e47bda1607740550141e37c0e49d1e5182b34699f15adfd137ee266d346811a
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
 FetchContent_Declare(imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui.git

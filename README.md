@@ -54,3 +54,7 @@ build\bin\clipper.exe --render-ui settings.capture out.png 1.5   :: preview a pa
 CI runs on every pull request and push to `main`: it builds with MSVC and runs `ctest`, which covers the unit suites only (GitHub runners have no GPU, display or audio device). Run the GPU, capture and desktop tests locally before merging changes in those areas.
 
 Log: `%LOCALAPPDATA%\Clipper\logs\clipper.log`. Gallery thumbnails and index: `%LOCALAPPDATA%\Clipper\thumbs`.
+
+## License
+
+Clipper is released under the [MIT License](LICENSE). It uses FFmpeg (LGPL v3, loaded as separate DLLs), Dear ImGui and nlohmann/json; see [installer/THIRD-PARTY.txt](installer/THIRD-PARTY.txt) for details and sources.

@@ -28,6 +28,13 @@ std::wstring T(const char* key) { return utf8ToWide(tr(key)); }
 
 void playSaveSound() { PlaySoundW(L"SystemNotification", nullptr, SND_ALIAS | SND_ASYNC | SND_NODEFAULT); }
 
+// Folders come from settings.json: "explore" on a checked directory never runs a file put there instead.
+void exploreFolder(const fs::path& dir) {
+  std::error_code ec;
+  if (!fs::is_directory(dir, ec)) return;
+  ShellExecuteW(nullptr, L"explore", dir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+}
+
 std::string durationText(Ticks t) {
   const auto secs = int((t + kTicksPerSecond / 2) / kTicksPerSecond);
   return secs >= 60 ? std::format("{}:{:02} min", secs / 60, secs % 60) : std::format("{} s", secs);
@@ -127,7 +134,7 @@ void Controller::buildUi() {
   };
   c.clipsFolder = [](const Settings& s) { return outputDir(s); };
   c.bufferFolder = [](const Settings& s) { return bufferDir(s); };
-  c.openFolder = [](const fs::path& p) { ShellExecuteW(nullptr, L"open", p.c_str(), nullptr, nullptr, SW_SHOWNORMAL); };
+  c.openFolder = [](const fs::path& p) { exploreFolder(p); };
   c.pickFolder = [this](const fs::path& initial) { return pickFolder(ui_ ? ui_->hwnd() : hwnd_, initial); };
   c.autostart = [] { return autostartEnabled(); };
   c.setAutostart = [](bool on) {
@@ -439,7 +446,7 @@ void Controller::togglePause() {
 }
 
 void Controller::openFolder() {
-  ShellExecuteW(nullptr, L"open", outputDir(settings_).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+  exploreFolder(outputDir(settings_));
 }
 
 GpuDevice Controller::sharedGpu() {
