@@ -180,6 +180,16 @@ void UiWindow::destroy() {
 }
 
 void UiWindow::renderFrame() {
+  // A modal dialog opened from inside a frame (folder picker) pumps messages: never start a nested frame.
+  if (inFrame_) {
+    requestFrames();
+    return;
+  }
+  struct FrameGuard {
+    bool& flag;
+    explicit FrameGuard(bool& f) : flag(f) { flag = true; }
+    ~FrameGuard() { flag = false; }
+  } guard(inFrame_);
   if (closeRequested_) {
     destroy();
     return;

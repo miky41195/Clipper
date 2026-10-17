@@ -43,6 +43,7 @@ private:
   void createTarget();
   void dumpIfRequested();
   int frames_ = 0;
+  bool inFrame_ = false;
 
   HINSTANCE inst_;
   DrawFn draw_;
