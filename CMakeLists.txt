@@ -15,7 +15,7 @@ add_compile_definitions(UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WIN
 include(FetchContent)
 FetchContent_Declare(doctest
   GIT_REPOSITORY https://github.com/doctest/doctest.git
-  GIT_TAG v2.4.11
+  GIT_TAG v2.4.12
   GIT_SHALLOW TRUE)
 FetchContent_Declare(json
   URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)

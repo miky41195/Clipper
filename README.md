@@ -1,5 +1,7 @@
 # Clipper
 
+[![CI](https://github.com/miky41195/clipper/actions/workflows/ci.yml/badge.svg)](https://github.com/miky41195/clipper/actions/workflows/ci.yml)
+
 Lightweight clip recorder for Windows 11. It always keeps the last N seconds of your screen ready (replay buffer) and saves them with a hotkey; it can also record manually. Every clip stores audio on separate tracks: Mix, Microphone, and one track for each app that is playing sound. In the gallery you can mute or lower any track and export the clip without re-encoding the video.
 
 ## Usage
@@ -22,7 +24,15 @@ Settings are also stored in `%APPDATA%\Clipper\settings.json`.
 ## Installer (for sharing with friends)
 
 ```
-make_installer.cmd      :: -> dist\Clipper-Setup-1.0.0.exe (~38 MB)
+make_installer.cmd          :: -> dist\Clipper-Setup-1.0.0.exe (~38 MB)
+make_installer.cmd 1.2.0    :: -> dist\Clipper-Setup-1.2.0.exe
+```
+
+To publish a release on GitHub, push a version tag: the Release workflow builds the installer and attaches it to a new release.
+
+```
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 - Installs for the current user in `%LOCALAPPDATA%\Programs\Clipper`: no administrator rights or Visual C++ runtime required.
@@ -40,6 +50,8 @@ set CLIPPER_AUDIO_TESTS=1                   :: enable the audio capture test (pl
 build\bin\clipper.exe --bench 30            :: measure CPU/RAM and save a test clip
 build\bin\clipper.exe --render-ui settings.capture out.png 1.5   :: preview a page
 ```
+
+CI runs on every pull request and push to `main`: it builds with MSVC and runs `ctest`, which covers the unit suites only (GitHub runners have no GPU, display or audio device). Run the GPU, capture and desktop tests locally before merging changes in those areas.
 
 Log: `%LOCALAPPDATA%\Clipper\logs\clipper.log`. Gallery thumbnails and index: `%LOCALAPPDATA%\Clipper\thumbs`.
 
