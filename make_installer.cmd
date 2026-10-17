@@ -8,7 +8,7 @@ set "STAGE=%BUILD%\stage"
 set "ISCC=%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
 if not exist "%ISCC%" set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
 if not exist "%ISCC%" (
-  echo Inno Setup 6 non trovato: winget install JRSoftware.InnoSetup
+  echo Inno Setup 6 not found: winget install JRSoftware.InnoSetup
   exit /b 1
 )
 call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
@@ -25,7 +25,9 @@ for %%L in (avcodec avformat avutil swscale swresample) do (
 )
 mkdir "%STAGE%\licenses"
 copy /y "%BUILD%\_deps\ffmpeg-src\LICENSE.txt" "%STAGE%\licenses\FFmpeg-LICENSE.txt" >nul
+copy /y "%ROOT%installer\GPL-3.0.txt" "%STAGE%\licenses\" >nul
 copy /y "%ROOT%installer\THIRD-PARTY.txt" "%STAGE%\licenses\" >nul
+copy /y "%ROOT%LICENSE" "%STAGE%\licenses\Clipper-LICENSE.txt" >nul
 
 if not exist "%ROOT%dist" mkdir "%ROOT%dist"
 "%ISCC%" /Q "/DStageDir=%STAGE%" "%ROOT%installer\clipper.iss" || exit /b 1
