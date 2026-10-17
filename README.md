@@ -42,3 +42,7 @@ build\bin\clipper.exe --render-ui settings.capture out.png 1.5   :: preview a pa
 ```
 
 Log: `%LOCALAPPDATA%\Clipper\logs\clipper.log`. Gallery thumbnails and index: `%LOCALAPPDATA%\Clipper\thumbs`.
+
+## License
+
+Clipper is released under the [MIT License](LICENSE). It uses FFmpeg (LGPL v3, loaded as separate DLLs), Dear ImGui and nlohmann/json; see [installer/THIRD-PARTY.txt](installer/THIRD-PARTY.txt) for details and sources.
