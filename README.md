@@ -27,19 +27,6 @@ Settings are also stored in `%APPDATA%\Clipper\settings.json`.
 make_installer.cmd          :: -> dist\Clipper-Setup-1.0.0.exe (~38 MB)
 make_installer.cmd 1.2.0    :: -> dist\Clipper-Setup-1.2.0.exe
 ```
-
-To publish a release on GitHub, push a version tag: the Release workflow builds the installer and attaches it to a new release.
-
-```
-git tag v1.2.0
-git push origin v1.2.0
-```
-
-- Installs for the current user in `%LOCALAPPDATA%\Programs\Clipper`: no administrator rights or Visual C++ runtime required.
-- Creates a Start menu shortcut (desktop shortcut and start with Windows are optional) and uninstalls from *Settings → Apps*. Uninstalling removes cache and logs; settings and clips are kept.
-- Requirements: 64-bit Windows 10 2004+ or 11. Recent NVIDIA, AMD or Intel GPUs use the hardware encoder. If the GPU does not support AV1, Clipper falls back to HEVC or H.264 automatically on first launch.
-- The installer is not digitally signed, so Windows SmartScreen may show "Windows protected your PC": *More info → Run anyway*.
-
 ## Build and test
 
 ```
