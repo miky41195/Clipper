@@ -4,9 +4,13 @@
 
 Lightweight clip recorder for Windows 11. It always keeps the last N seconds of your screen ready (replay buffer) and saves them with a hotkey; it can also record manually. Every clip stores audio on separate tracks: Mix, Microphone, and one track for each app that is playing sound. In the gallery you can mute or lower any track and export the clip without re-encoding the video.
 
+## Download
+
+Grab `Clipper-Setup-<version>.exe` from the [latest release](https://github.com/miky41195/clipper/releases/latest) and run it. Requires Windows 11 (x64).
+
 ## Usage
 
-- Run `build\bin\clipper.exe`: a dot appears in the tray (green = buffer active, red = recording, grey = paused). `clipper.exe --show` opens the window right away; if Clipper is already running, launching it again opens the window.
+- Run `clipper.exe` (or `build\bin\clipper.exe` if you built it yourself): a dot appears in the tray (green = buffer active, red = recording, grey = paused). `clipper.exe --show` opens the window right away; if Clipper is already running, launching it again opens the window.
 - **Alt+F10**: save the last few seconds.
 - **Alt+Shift+F9**: start / stop recording.
 - **Alt+G**: open the gallery.
@@ -27,6 +31,9 @@ Settings are also stored in `%APPDATA%\Clipper\settings.json`.
 make_installer.cmd          :: -> dist\Clipper-Setup-1.0.0.exe (~38 MB)
 make_installer.cmd 1.2.0    :: -> dist\Clipper-Setup-1.2.0.exe
 ```
+
+Pushing a tag like `v1.2.0` runs [release.yml](.github/workflows/release.yml), which builds the installer and publishes it as a GitHub release.
+
 ## Build and test
 
 ```
