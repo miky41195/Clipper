@@ -1,3 +1,4 @@
+#include <windows.h>
 #include <doctest/doctest.h>
 #include "platform/Autostart.h"
 #include "ui/AudioApps.h"
@@ -42,4 +43,19 @@ TEST_CASE("autostart registry value round trip") {
   CHECK(autostartEnabled(name));
   setAutostart(false, L"", name);
   CHECK_FALSE(autostartEnabled(name));
+}
+
+TEST_CASE("autostart works when the Run key does not exist yet") {
+  // Point HKCU at an empty key for this process, like a fresh profile without ...\Run.
+  const wchar_t* hive = L"Software\\ClipperTestEmptyHive";
+  HKEY empty = nullptr;
+  REQUIRE(RegCreateKeyExW(HKEY_CURRENT_USER, hive, 0, nullptr, 0, KEY_ALL_ACCESS, nullptr, &empty, nullptr) == ERROR_SUCCESS);
+  REQUIRE(RegOverridePredefKey(HKEY_CURRENT_USER, empty) == ERROR_SUCCESS);
+  setAutostart(true, L"C:\\x\\clipper.exe", L"ClipperTestAutostart");
+  const bool on = autostartEnabled(L"ClipperTestAutostart");
+  RegOverridePredefKey(HKEY_CURRENT_USER, nullptr);
+  RegCloseKey(empty);
+  RegDeleteTreeW(HKEY_CURRENT_USER, hive);
+  RegDeleteKeyW(HKEY_CURRENT_USER, hive);
+  CHECK(on);
 }
