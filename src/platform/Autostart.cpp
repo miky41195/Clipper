@@ -12,7 +12,9 @@ bool autostartEnabled(const wchar_t* valueName) {
 
 void setAutostart(bool enabled, const std::wstring& exePath, const wchar_t* valueName) {
   HKEY key = nullptr;
-  if (RegOpenKeyExW(HKEY_CURRENT_USER, kRunKey, 0, KEY_SET_VALUE, &key) != ERROR_SUCCESS) return;
+  // Create, not just open: a fresh profile (e.g. CI runners) may not have the Run key yet.
+  if (RegCreateKeyExW(HKEY_CURRENT_USER, kRunKey, 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) != ERROR_SUCCESS)
+    return;
   if (enabled) {
     const std::wstring cmd = L"\"" + exePath + L"\"";
     RegSetValueExW(key, valueName, 0, REG_SZ, reinterpret_cast<const BYTE*>(cmd.c_str()),
